@@ -4,13 +4,29 @@ on:
     branches:
       - master
 jobs:
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          override: true
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
   test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: stable-x86_64-unknown-linux-gnu
+          profile: minimal
           override: true
       - uses: actions-rs/cargo@v1
         with:
@@ -18,7 +34,10 @@ jobs:
           all-features: true
           args: --verbose
   publish:
-    needs: test
+    name: Publish
+    needs:
+      - test
+      - clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

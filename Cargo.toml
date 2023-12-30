@@ -17,4 +17,4 @@ categories = ["web-programming", "http", "middleware"]
 ntex = "0.7"
 
 [dev-dependencies]
-ntex = { version = "0.7", features=["tokio"] }
+ntex = { version = "0.7", features = ["tokio"] }
