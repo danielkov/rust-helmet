@@ -1,0 +1,20 @@
+[package]
+name = "ntex-helmet"
+version = "0.1.0"
+edition = "2021"
+authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
+description = "HTTP security headers middleware for ntex-web"
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/danielkov/ntex-helmet"
+repository = "https://github.com/danielkov/ntex-helmet"
+keywords = ["ntex", "ntex-web", "helmet", "security", "middleware"]
+categories = ["web-programming", "http", "middleware"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ntex = "0.7"
+
+[dev-dependencies]
+ntex = { version = "0.7", features=["tokio"] }
