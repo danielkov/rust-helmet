@@ -1,8 +1,76 @@
-/// Helmet is a collection of HTTP headers that help secure your app by setting various HTTP headers.
-///
-/// ntex-helmet is a middleware that automatically sets these headers.
-///
-/// It is based on the [Helmet](https://helmetjs.github.io/) library for Node.js and is highly configurable.
+//! Helmet is a collection of HTTP headers that help secure your app by setting various HTTP headers.
+//!
+//! ntex-helmet is a middleware that automatically sets these headers.
+//!
+//! It is based on the [Helmet](https://helmetjs.github.io/) library for Node.js and is highly configurable.
+//!
+//! # Usage
+//!
+//! ```rust
+//! use ntex_helmet::Helmet;
+//!
+//! #[ntex::main]
+//! async fn main() -> std::io::Result<()> {
+//!     web::HttpServer::new(move || {
+//!         web::App::new()
+//!            .wrap(Helmet::default())
+//!            .service(web::resource("/").to(|| async { "Hello, world!" }))
+//!     })
+//!     .bind(("127.0.0.1", 8080))?
+//!     .run()
+//!     .await
+//! }
+//! ```
+//!
+//! By default Helmet will set the following headers:
+//!
+//! ```text
+//! Content-Security-Policy: default-src 'self'; base-uri 'self'; font-src 'self' https: data:; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; object-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self' https: 'unsafe-inline'; upgrade-insecure-requests
+//! Cross-Origin-Opener-Policy: same-origin
+//! Cross-Origin-Resource-Policy: same-origin
+//! Origin-Agent-Cluster: ?1
+//! Referrer-Policy: no-referrer
+//! Strict-Transport-Security: max-age=15552000; includeSubDomains
+//! X-Content-Type-Options: nosniff
+//! X-DNS-Prefetch-Control: off
+//! X-Download-Options: noopen
+//! X-Frame-Options: sameorigin
+//! X-Permitted-Cross-Domain-Policies: none
+//! X-XSS-Protection: 0
+//! ```
+//!
+//! This might be a good starting point for most users, but it is highly recommended to spend some time with the documentation for each header, and adjust them to your needs.
+//!
+//! # Configuration
+//!
+//! By default if you construct a new instance of `Helmet` it will not set any headers.
+//!
+//! It is possible to configure `Helmet` to set only the headers you want, by using the `add` method to add headers.
+//!
+//! ```rust
+//! use ntex_helmet::{Helmet, ContentSecurityPolicy, CrossOriginOpenerPolicy};
+//!
+//! #[ntex::main]
+//! async fn main() -> std::io::Result<()> {
+//!     web::HttpServer::new(move || {
+//!         web::App::new()
+//!             .wrap(
+//!                 Helmet::new().add(
+//!                     ContentSecurityPolicy::new()
+//!                         .child_src(vec!["'self'", "https://youtube.com"])
+//!                         .connect_src(vec!["'self'", "https://youtube.com"])
+//!                         .default_src(vec!["'self'", "https://youtube.com"])
+//!                         .font_src(vec!["'self'", "https://youtube.com"]),
+//!                 ),
+//!             )
+//!             .add(CrossOriginOpenerPolicy::same_origin_allow_popups())
+//!             .service(web::resource("/").to(|| async { "Hello, world!" }))
+//!     })
+//!     .bind(("127.0.0.1", 8080))?
+//!     .run()
+//!     .await
+//! }
+//!
 use core::fmt::Display;
 
 use ntex::{
@@ -863,15 +931,15 @@ impl Header for XPoweredBy {
 ///
 /// # Directives
 ///
-/// - child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as <frame> and <iframe>.
+/// - child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as `<frame>` and `<iframe>`.
 /// - connect-src: Applies to XMLHttpRequest (AJAX), WebSocket or EventSource. If not allowed the browser emulates a 400 HTTP status code.
 /// - default-src: The default-src is the default policy for loading content such as JavaScript, Images, CSS, Font's, AJAX requests, Frames, HTML5 Media. See the list of directives to see which values are allowed as default.
 /// - font-src: Defines valid sources for fonts loaded using @font-face.
-/// - frame-src: Defines valid sources for nested browsing contexts loading using elements such as <frame> and <iframe>.
+/// - frame-src: Defines valid sources for nested browsing contexts loading using elements such as `<frame>` and `<iframe>`.
 /// - img-src: Defines valid sources of images and favicons.
 /// - manifest-src: Specifies which manifest can be applied to the resource.
-/// - media-src: Defines valid sources for loading media using the <audio> and <video> elements.
-/// - object-src: Defines valid sources for the <object>, <embed>, and <applet> elements.
+/// - media-src: Defines valid sources for loading media using the `<audio>` and `<video>` elements.
+/// - object-src: Defines valid sources for the `<object>`, `<embed>`, and `<applet>` elements.
 /// - prefetch-src: Specifies which referrer to use when fetching the resource.
 /// - script-src: Defines valid sources for JavaScript.
 /// - script-src-elem: Defines valid sources for JavaScript inline event handlers.
@@ -880,10 +948,10 @@ impl Header for XPoweredBy {
 /// - style-src-elem: Defines valid sources for stylesheets inline event handlers.
 /// - style-src-attr: Defines valid sources for stylesheets inline event handlers.
 /// - worker-src: Defines valid sources for Worker, SharedWorker, or ServiceWorker scripts.
-/// - base-uri: Restricts the URLs which can be used in a document's <base> element.
+/// - base-uri: Restricts the URLs which can be used in a document's `<base>` element.
 /// - sandbox: Enables a sandbox for the requested resource similar to the iframe sandbox attribute. The sandbox applies a same origin policy, prevents popups, plugins and script execution is blocked. You can keep the sandbox value empty to keep all restrictions in place, or add values: allow-forms allow-same-origin allow-scripts allow-popups, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-presentation, allow-popups-to-escape-sandbox, allow-top-navigation, allow-top-navigation-by-user-activation.
 /// - form-action: Restricts the URLs which can be used as the target of a form submissions from a given context.
-/// - frame-ancestors: Specifies valid parents that may embed a page using <frame>, <iframe>, <object>, <embed>, or <applet>.
+/// - frame-ancestors: Specifies valid parents that may embed a page using `<frame>`, `<iframe>`, `<object>`, `<embed>`, or `<applet>`.
 /// - report-to: Enables reporting of violations.
 /// - require-trusted-types-for: Specifies which trusted types are required by a resource.
 /// - trusted-types: Specifies which trusted types are defined by a resource.
@@ -910,15 +978,15 @@ pub enum ContentSecurityPolicyDirective<'a> {
     DefaultSrc(Vec<&'a str>),
     /// Defines valid sources for fonts loaded using @font-face.
     FontSrc(Vec<&'a str>),
-    /// Defines valid sources for nested browsing contexts loading using elements such as <frame> and <iframe>.
+    /// Defines valid sources for nested browsing contexts loading using elements such as `<frame>` and `<iframe>`.
     FrameSrc(Vec<&'a str>),
     /// Defines valid sources of images and favicons.
     ImgSrc(Vec<&'a str>),
     /// Specifies which manifest can be applied to the resource.
     ManifestSrc(Vec<&'a str>),
-    /// Defines valid sources for loading media using the <audio> and <video> elements.
+    /// Defines valid sources for loading media using the `<audio>` and `<video>` elements.
     MediaSrc(Vec<&'a str>),
-    /// Defines valid sources for the <object>, <embed>, and <applet> elements.
+    /// Defines valid sources for the `<object>`, `<embed>`, and `<applet>` elements.
     ObjectSrc(Vec<&'a str>),
     /// Specifies which referrer to use when fetching the resource.
     PrefetchSrc(Vec<&'a str>),
@@ -937,14 +1005,14 @@ pub enum ContentSecurityPolicyDirective<'a> {
     /// Defines valid sources for Worker, SharedWorker, or ServiceWorker scripts.
     WorkerSrc(Vec<&'a str>),
     // Document directives
-    /// Restricts the URLs which can be used in a document's <base> element.
+    /// Restricts the URLs which can be used in a document's `<base>` element.
     BaseUri(Vec<&'a str>),
     /// Enables a sandbox for the requested resource similar to the iframe sandbox attribute. The sandbox applies a same origin policy, prevents popups, plugins and script execution is blocked. You can keep the sandbox value empty to keep all restrictions in place, or add values: allow-forms allow-same-origin allow-scripts allow-popups, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-presentation, allow-popups-to-escape-sandbox, allow-top-navigation, allow-top-navigation-by-user-activation.
     Sandbox(Vec<&'a str>),
     // Navigation directives
     /// Restricts the URLs which can be used as the target of a form submissions from a given context.
     FormAction(Vec<&'a str>),
-    /// Specifies valid parents that may embed a page using <frame>, <iframe>, <object>, <embed>, or <applet>.
+    /// Specifies valid parents that may embed a page using `<frame>`, `<iframe>`, `<object>`, `<embed>`, or `<applet>`.
     FrameAncestors(Vec<&'a str>),
     // Reporting directives
     /// Enables reporting of violations.
@@ -961,7 +1029,7 @@ pub enum ContentSecurityPolicyDirective<'a> {
 }
 
 impl<'a> ContentSecurityPolicyDirective<'a> {
-    /// child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as <frame> and <iframe>.
+    /// child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as `<frame>`` and `<iframe>`.
     pub fn child_src(values: Vec<&'a str>) -> Self {
         Self::ChildSrc(values)
     }
@@ -981,7 +1049,7 @@ impl<'a> ContentSecurityPolicyDirective<'a> {
         Self::FontSrc(values)
     }
 
-    /// frame-src: Defines valid sources for nested browsing contexts loading using elements such as <frame> and <iframe>.
+    /// frame-src: Defines valid sources for nested browsing contexts loading using elements such as `<frame>` and `<iframe>`.
     pub fn frame_src(values: Vec<&'a str>) -> Self {
         Self::FrameSrc(values)
     }
@@ -996,12 +1064,12 @@ impl<'a> ContentSecurityPolicyDirective<'a> {
         Self::ManifestSrc(values)
     }
 
-    /// media-src: Defines valid sources for loading media using the <audio> and <video> elements.
+    /// media-src: Defines valid sources for loading media using the `<audio>` and `<video>` elements.
     pub fn media_src(values: Vec<&'a str>) -> Self {
         Self::MediaSrc(values)
     }
 
-    /// object-src: Defines valid sources for the <object>, <embed>, and <applet> elements.
+    /// object-src: Defines valid sources for the `<object>`, `<embed>`, and `<applet>` elements.
     pub fn object_src(values: Vec<&'a str>) -> Self {
         Self::ObjectSrc(values)
     }
@@ -1046,7 +1114,7 @@ impl<'a> ContentSecurityPolicyDirective<'a> {
         Self::WorkerSrc(values)
     }
 
-    /// base-uri: Restricts the URLs which can be used in a document's <base> element.
+    /// base-uri: Restricts the URLs which can be used in a document's `<base>` element.
     pub fn base_uri(values: Vec<&'a str>) -> Self {
         Self::BaseUri(values)
     }
@@ -1061,7 +1129,7 @@ impl<'a> ContentSecurityPolicyDirective<'a> {
         Self::FormAction(values)
     }
 
-    /// frame-ancestors: Specifies valid parents that may embed a page using <frame>, <iframe>, <object>, <embed>, or <applet>.
+    /// frame-ancestors: Specifies valid parents that may embed a page using `<frame>`, `<iframe>`, `<object>`, `<embed>`, or `<applet>`.
     pub fn frame_ancestors(values: Vec<&'a str>) -> Self {
         Self::FrameAncestors(values)
     }
@@ -1219,7 +1287,7 @@ impl<'a> ContentSecurityPolicy<'a> {
         self
     }
 
-    /// child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as <frame> and <iframe>.
+    /// child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as `<frame>` and `<iframe>`.
     pub fn child_src(self, values: Vec<&'a str>) -> Self {
         self.directive(ContentSecurityPolicyDirective::child_src(values))
     }
@@ -1239,7 +1307,7 @@ impl<'a> ContentSecurityPolicy<'a> {
         self.directive(ContentSecurityPolicyDirective::font_src(values))
     }
 
-    /// frame-src: Defines valid sources for nested browsing contexts loading using elements such as <frame> and <iframe>.
+    /// frame-src: Defines valid sources for nested browsing contexts loading using elements such as `<frame>` and `<iframe>`.
     pub fn frame_src(self, values: Vec<&'a str>) -> Self {
         self.directive(ContentSecurityPolicyDirective::frame_src(values))
     }
@@ -1254,12 +1322,12 @@ impl<'a> ContentSecurityPolicy<'a> {
         self.directive(ContentSecurityPolicyDirective::manifest_src(values))
     }
 
-    /// media-src: Defines valid sources for loading media using the <audio> and <video> elements.
+    /// media-src: Defines valid sources for loading media using the `<audio>` and `<video>` elements.
     pub fn media_src(self, values: Vec<&'a str>) -> Self {
         self.directive(ContentSecurityPolicyDirective::media_src(values))
     }
 
-    /// object-src: Defines valid sources for the <object>, <embed>, and <applet> elements.
+    /// object-src: Defines valid sources for the `<object>`, `<embed>`, and `<applet>` elements.
     pub fn object_src(self, values: Vec<&'a str>) -> Self {
         self.directive(ContentSecurityPolicyDirective::object_src(values))
     }
@@ -1304,7 +1372,7 @@ impl<'a> ContentSecurityPolicy<'a> {
         self.directive(ContentSecurityPolicyDirective::worker_src(values))
     }
 
-    /// base-uri: Restricts the URLs which can be used in a document's <base> element.
+    /// base-uri: Restricts the URLs which can be used in a document's `<base>` element.
     pub fn base_uri(self, values: Vec<&'a str>) -> Self {
         self.directive(ContentSecurityPolicyDirective::base_uri(values))
     }
@@ -1319,7 +1387,7 @@ impl<'a> ContentSecurityPolicy<'a> {
         self.directive(ContentSecurityPolicyDirective::form_action(values))
     }
 
-    /// frame-ancestors: Specifies valid parents that may embed a page using <frame>, <iframe>, <object>, <embed>, or <applet>.
+    /// frame-ancestors: Specifies valid parents that may embed a page using `<frame>`, `<iframe>`, `<object>`, `<embed>`, or `<applet>`.
     pub fn frame_ancestors(self, values: Vec<&'a str>) -> Self {
         self.directive(ContentSecurityPolicyDirective::frame_ancestors(values))
     }
