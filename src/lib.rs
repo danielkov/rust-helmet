@@ -6,7 +6,8 @@
 //!
 //! # Usage
 //!
-//! ```rust
+//! ```no_run
+//! use ntex::web;
 //! use ntex_helmet::Helmet;
 //!
 //! #[ntex::main]
@@ -47,30 +48,32 @@
 //!
 //! It is possible to configure `Helmet` to set only the headers you want, by using the `add` method to add headers.
 //!
-//! ```rust
-//! use ntex_helmet::{Helmet, ContentSecurityPolicy, CrossOriginOpenerPolicy};
+//! ```no_run
+//! use ntex::web;
+//! use ntex_helmet::{ContentSecurityPolicy, CrossOriginOpenerPolicy, Helmet};
 //!
 //! #[ntex::main]
 //! async fn main() -> std::io::Result<()> {
 //!     web::HttpServer::new(move || {
 //!         web::App::new()
 //!             .wrap(
-//!                 Helmet::new().add(
-//!                     ContentSecurityPolicy::new()
-//!                         .child_src(vec!["'self'", "https://youtube.com"])
-//!                         .connect_src(vec!["'self'", "https://youtube.com"])
-//!                         .default_src(vec!["'self'", "https://youtube.com"])
-//!                         .font_src(vec!["'self'", "https://youtube.com"]),
-//!                 ),
+//!                 Helmet::new()
+//!                     .add(
+//!                         ContentSecurityPolicy::new()
+//!                             .child_src(vec!["'self'", "https://youtube.com"])
+//!                             .connect_src(vec!["'self'", "https://youtube.com"])
+//!                             .default_src(vec!["'self'", "https://youtube.com"])
+//!                             .font_src(vec!["'self'", "https://youtube.com"]),
+//!                     )
+//!                     .add(CrossOriginOpenerPolicy::same_origin_allow_popups()),
 //!             )
-//!             .add(CrossOriginOpenerPolicy::same_origin_allow_popups())
 //!             .service(web::resource("/").to(|| async { "Hello, world!" }))
 //!     })
-//!     .bind(("127.0.0.1", 8080))?
+//!     .bind(("127.0.0.1", 4200))?
 //!     .run()
 //!     .await
 //! }
-//!
+//! ```
 use core::fmt::Display;
 
 use ntex::{
