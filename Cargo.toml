@@ -1,6 +1,6 @@
 [package]
 name = "ntex-helmet"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
 description = "HTTP security headers middleware for ntex-web"

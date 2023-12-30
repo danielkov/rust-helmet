@@ -4,11 +4,13 @@
 ///
 /// It is based on the [Helmet](https://helmetjs.github.io/) library for Node.js and is highly configurable.
 use core::fmt::Display;
-use std::rc::Rc;
 
 use ntex::{
     forward_poll_ready, forward_poll_shutdown,
-    http::header::{HeaderName, HeaderValue},
+    http::{
+        header::{HeaderName, HeaderValue},
+        HeaderMap,
+    },
     util::BoxFuture,
     web::{WebRequest, WebResponse},
     Middleware, Service, ServiceCtx,
@@ -1443,34 +1445,25 @@ impl<'a> Header for ContentSecurityPolicy<'a> {
 ///    .service(ntex::web::resource("/").to(|| async { "Hello world!" }));
 /// ```
 pub struct Helmet {
-    inner: Rc<Inner>,
+    headers: Vec<Box<dyn Header>>,
 }
 
 pub struct HelmetMiddleware<S> {
     service: S,
-    inner: Rc<Inner>,
-}
-
-pub struct Inner {
-    headers: Vec<Box<dyn Header>>,
+    headers: HeaderMap,
 }
 
 impl Helmet {
     /// Create new `Helmet` instance without any headers applied
     pub fn new() -> Self {
         Self {
-            inner: Rc::new(Inner {
-                headers: Vec::new(),
-            }),
+            headers: Vec::new(),
         }
     }
 
     /// Add header to the middleware
     pub fn add(mut self, header: impl Header + 'static) -> Self {
-        Rc::get_mut(&mut self.inner)
-            .expect("Helmet is already in use")
-            .headers
-            .push(Box::new(header));
+        self.headers.push(Box::new(header));
         self
     }
 }
@@ -1531,10 +1524,8 @@ where
             let mut res = ctx.call(&self.service, req).await?;
 
             // set response headers
-            for header in self.inner.headers.iter() {
-                let name = HeaderName::try_from(header.name()).expect("invalid header name");
-                let value = HeaderValue::from_str(&header.value()).expect("invalid header value");
-                res.headers_mut().append(name, value);
+            for (name, value) in self.headers.iter() {
+                res.headers_mut().append(name.clone(), value.clone());
             }
 
             Ok(res)
@@ -1546,10 +1537,14 @@ impl<S> Middleware<S> for Helmet {
     type Service = HelmetMiddleware<S>;
 
     fn create(&self, service: S) -> Self::Service {
-        HelmetMiddleware {
-            service,
-            inner: self.inner.clone(),
+        let mut headers = HeaderMap::new();
+        for header in self.headers.iter() {
+            let name = HeaderName::try_from(header.name()).expect("invalid header name");
+            let value = HeaderValue::from_str(&header.value()).expect("invalid header value");
+            headers.append(name, value);
         }
+
+        HelmetMiddleware { service, headers }
     }
 }
 
