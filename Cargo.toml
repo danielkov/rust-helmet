@@ -14,7 +14,7 @@ categories = ["web-programming", "http", "middleware"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ntex = "0.7"
+ntex = { version = "0.7", features = ["tokio"] }
 
 [dev-dependencies]
 ntex = { version = "0.7", features = ["tokio"] }
