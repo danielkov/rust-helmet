@@ -2,6 +2,14 @@
 name = "axum-helmet"
 version = "0.1.0"
 edition = "2021"
+authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
+description = "HTTP security headers middleware core for axum web framework"
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/danielkov/ntex-helmet"
+repository = "https://github.com/danielkov/ntex-helmet"
+keywords = ["helmet", "security", "middleware", "rust", "web", "axum"]
+categories = ["web-programming", "http", "middleware"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
