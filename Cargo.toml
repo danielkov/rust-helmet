@@ -1,5 +1,6 @@
 [workspace]
 members = [
   "packages/ntex-helmet",
-  "packages/helmet-core"
-, "packages/axum-helmet", "packages/helmet-actix"]
+  "packages/helmet-core",
+  "packages/axum-helmet",
+]
