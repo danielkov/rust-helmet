@@ -6,8 +6,8 @@ authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
 description = "HTTP security headers middleware core for various web frameworks"
 readme = "README.md"
 license = "MIT"
-homepage = "https://github.com/danielkov/ntex-helmet"
-repository = "https://github.com/danielkov/ntex-helmet"
+homepage = "https://github.com/danielkov/rust-helmet"
+repository = "https://github.com/danielkov/rust-helmet"
 keywords = ["helmet", "security", "middleware", "rust", "web"]
 categories = ["web-programming", "http", "middleware"]
 
