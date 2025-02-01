@@ -102,8 +102,11 @@ where
 {
     type Response = WebResponse;
     type Error = S::Error;
-    type Future<'f> =
-        BoxFuture<'f, Result<Self::Response, Self::Error>> where S: 'f, E: 'f;
+    type Future<'f>
+        = BoxFuture<'f, Result<Self::Response, Self::Error>>
+    where
+        S: 'f,
+        E: 'f;
 
     forward_poll_ready!(service);
     forward_poll_shutdown!(service);
@@ -126,8 +129,10 @@ where
 /// ```rust
 /// use ntex::web;
 /// use ntex_helmet::Helmet;
+#[derive(Default)]
 pub struct Helmet(HelmetCore);
 
+#[allow(clippy::should_implement_trait)]
 impl Helmet {
     pub fn new() -> Self {
         Self(HelmetCore::new())
@@ -135,12 +140,6 @@ impl Helmet {
 
     pub fn add(self, middleware: impl helmet_core::Header + 'static) -> Self {
         Self(self.0.add(middleware))
-    }
-}
-
-impl Default for Helmet {
-    fn default() -> Self {
-        Self(HelmetCore::default())
     }
 }
 

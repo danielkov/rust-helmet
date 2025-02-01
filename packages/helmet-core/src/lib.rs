@@ -1391,7 +1391,7 @@ impl<'a> ContentSecurityPolicy<'a> {
     }
 }
 
-impl<'a> Display for ContentSecurityPolicy<'a> {
+impl Display for ContentSecurityPolicy<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let directives = self
             .directives
@@ -1403,7 +1403,7 @@ impl<'a> Display for ContentSecurityPolicy<'a> {
     }
 }
 
-impl<'a> Default for ContentSecurityPolicy<'a> {
+impl Default for ContentSecurityPolicy<'_> {
     /// Default policy for the Content-Security-Policy header.
     ///
     /// values:
@@ -1436,7 +1436,7 @@ impl<'a> Default for ContentSecurityPolicy<'a> {
     }
 }
 
-impl<'a> Header for ContentSecurityPolicy<'a> {
+impl Header for ContentSecurityPolicy<'_> {
     fn name(&self) -> &'static str {
         if self.report_only {
             "Content-Security-Policy-Report-Only"
@@ -1472,6 +1472,7 @@ pub struct Helmet {
     pub headers: Vec<Box<dyn Header>>,
 }
 
+#[allow(clippy::should_implement_trait)]
 impl Helmet {
     /// Create new `Helmet` instance without any headers applied
     pub fn new() -> Self {
