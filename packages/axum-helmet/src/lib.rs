@@ -73,8 +73,8 @@ impl HelmetLayer {
             .iter()
             .map(|header| {
                 (
-                    HeaderName::try_from(header.name()).expect("invalid header name"),
-                    HeaderValue::try_from(header.value()).expect("invalid header value"),
+                    HeaderName::try_from(header.0).expect("invalid header name"),
+                    HeaderValue::try_from(&header.1).expect("invalid header value"),
                 )
             })
             .collect();
