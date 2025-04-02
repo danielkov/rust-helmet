@@ -1,6 +1,6 @@
 [package]
 name = "actix-web-helmet"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
 description = "HTTP security headers middleware for actix-web"
@@ -15,7 +15,7 @@ categories = ["web-programming", "http", "middleware"]
 
 [dependencies]
 actix-web = { version = "4.10" }
-helmet-core = { path = "../helmet-core", version = "0.1.0" }
+helmet-core = { path = "../helmet-core", version = "0.2.0" }
 futures = { version = "0.3" }
 
 [dev-dependencies]

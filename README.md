@@ -5,7 +5,7 @@ A security middleware library for popular Rust web frameworks.
 ## Packages
 
 - `ntex-helmet` is a security middleware for the `ntex` web framework.
-- `actix-web-helmet` is a security middleware for the `actix-web` web framework. **_Coming Soon_**
+- `actix-web-helmet` is a security middleware for the `actix-web` web framework.
 - `rocket-helmet` is a security middleware for the `rocket` web framework. **_Coming Soon_**
 - `warp-helmet` is a security middleware for the `warp` web framework. **_Coming Soon_**
 - `axum-helmet` is a security middleware for the `axum` web framework.
