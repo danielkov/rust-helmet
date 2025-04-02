@@ -3,4 +3,6 @@ members = [
   "packages/ntex-helmet",
   "packages/helmet-core",
   "packages/axum-helmet",
+  "packages/actix-web-helmet",
 ]
+resolver = "2"

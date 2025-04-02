@@ -59,20 +59,14 @@ use core::fmt::Display;
 ///
 /// struct MyHeader;
 ///
-/// impl Header for MyHeader {
-///    fn name(&self) -> &'static str {
-///       "My-Header"
-///   }
-///
-///   fn value(&self) -> String {
-///      "my-value".to_string()
-///  }
+/// impl Into<Header> for MyHeader {
+///     fn into(self) -> Header {
+///         ("My-Header", "My-Value".to_owned())
+///    }
 /// }
 /// ```
-pub trait Header {
-    fn name(&self) -> &'static str;
-    fn value(&self) -> String;
-}
+
+pub type Header = (&'static str, String);
 
 /// Manages `Cross-Origin-Embedder-Policy` header
 ///
@@ -116,23 +110,19 @@ impl CrossOriginEmbedderPolicy {
     }
 }
 
-impl Display for CrossOriginEmbedderPolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl CrossOriginEmbedderPolicy {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            CrossOriginEmbedderPolicy::UnsafeNone => write!(f, "unsafe-none"),
-            CrossOriginEmbedderPolicy::RequireCorp => write!(f, "require-corp"),
-            CrossOriginEmbedderPolicy::Credentialless => write!(f, "credentialless"),
+            CrossOriginEmbedderPolicy::UnsafeNone => "unsafe-none",
+            CrossOriginEmbedderPolicy::RequireCorp => "require-corp",
+            CrossOriginEmbedderPolicy::Credentialless => "credentialless",
         }
     }
 }
 
-impl Header for CrossOriginEmbedderPolicy {
-    fn name(&self) -> &'static str {
-        "Cross-Origin-Embedder-Policy"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for CrossOriginEmbedderPolicy {
+    fn into(self) -> Header {
+        ("Cross-Origin-Embedder-Policy", self.as_str().to_owned())
     }
 }
 
@@ -174,23 +164,19 @@ impl CrossOriginOpenerPolicy {
     }
 }
 
-impl Display for CrossOriginOpenerPolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl CrossOriginOpenerPolicy {
+    fn as_str(&self) -> &'static str {
         match self {
-            CrossOriginOpenerPolicy::SameOrigin => write!(f, "same-origin"),
-            CrossOriginOpenerPolicy::SameOriginAllowPopups => write!(f, "same-origin-allow-popups"),
-            CrossOriginOpenerPolicy::UnsafeNone => write!(f, "unsafe-none"),
+            CrossOriginOpenerPolicy::SameOrigin => "same-origin",
+            CrossOriginOpenerPolicy::SameOriginAllowPopups => "same-origin-allow-popups",
+            CrossOriginOpenerPolicy::UnsafeNone => "unsafe-none",
         }
     }
 }
 
-impl Header for CrossOriginOpenerPolicy {
-    fn name(&self) -> &'static str {
-        "Cross-Origin-Opener-Policy"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for CrossOriginOpenerPolicy {
+    fn into(self) -> Header {
+        ("Cross-Origin-Opener-Policy", self.as_str().to_owned())
     }
 }
 
@@ -232,23 +218,19 @@ impl CrossOriginResourcePolicy {
     }
 }
 
-impl Display for CrossOriginResourcePolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl CrossOriginResourcePolicy {
+    fn as_str(&self) -> &'static str {
         match self {
-            CrossOriginResourcePolicy::SameOrigin => write!(f, "same-origin"),
-            CrossOriginResourcePolicy::SameSite => write!(f, "same-site"),
-            CrossOriginResourcePolicy::CrossOrigin => write!(f, "cross-origin"),
+            CrossOriginResourcePolicy::SameOrigin => "same-origin",
+            CrossOriginResourcePolicy::SameSite => "same-site",
+            CrossOriginResourcePolicy::CrossOrigin => "cross-origin",
         }
     }
 }
 
-impl Header for CrossOriginResourcePolicy {
-    fn name(&self) -> &'static str {
-        "Cross-Origin-Resource-Policy"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for CrossOriginResourcePolicy {
+    fn into(self) -> Header {
+        ("Cross-Origin-Resource-Policy", self.as_str().to_owned())
     }
 }
 
@@ -277,23 +259,19 @@ impl OriginAgentCluster {
     }
 }
 
-impl Display for OriginAgentCluster {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl OriginAgentCluster {
+    fn as_str(&self) -> &'static str {
         if self.0 {
-            write!(f, "?1")
+            "?1"
         } else {
-            write!(f, "?0")
+            "?0"
         }
     }
 }
 
-impl Header for OriginAgentCluster {
-    fn name(&self) -> &'static str {
-        "Origin-Agent-Cluster"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for OriginAgentCluster {
+    fn into(self) -> Header {
+        ("Origin-Agent-Cluster", self.as_str().to_owned())
     }
 }
 
@@ -365,30 +343,24 @@ impl ReferrerPolicy {
     }
 }
 
-impl Display for ReferrerPolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ReferrerPolicy {
+    fn as_str(&self) -> &'static str {
         match self {
-            ReferrerPolicy::NoReferrer => write!(f, "no-referrer"),
-            ReferrerPolicy::NoReferrerWhenDowngrade => write!(f, "no-referrer-when-downgrade"),
-            ReferrerPolicy::Origin => write!(f, "origin"),
-            ReferrerPolicy::OriginWhenCrossOrigin => write!(f, "origin-when-cross-origin"),
-            ReferrerPolicy::SameOrigin => write!(f, "same-origin"),
-            ReferrerPolicy::StrictOrigin => write!(f, "strict-origin"),
-            ReferrerPolicy::StrictOriginWhenCrossOrigin => {
-                write!(f, "strict-origin-when-cross-origin")
-            }
-            ReferrerPolicy::UnsafeUrl => write!(f, "unsafe-url"),
+            ReferrerPolicy::NoReferrer => "no-referrer",
+            ReferrerPolicy::NoReferrerWhenDowngrade => "no-referrer-when-downgrade",
+            ReferrerPolicy::Origin => "origin",
+            ReferrerPolicy::OriginWhenCrossOrigin => "origin-when-cross-origin",
+            ReferrerPolicy::SameOrigin => "same-origin",
+            ReferrerPolicy::StrictOrigin => "strict-origin",
+            ReferrerPolicy::StrictOriginWhenCrossOrigin => "strict-origin-when-cross-origin",
+            ReferrerPolicy::UnsafeUrl => "unsafe-url",
         }
     }
 }
 
-impl Header for ReferrerPolicy {
-    fn name(&self) -> &'static str {
-        "Referrer-Policy"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for ReferrerPolicy {
+    fn into(self) -> Header {
+        ("Referrer-Policy", self.as_str().to_owned())
     }
 }
 
@@ -465,13 +437,9 @@ impl Display for StrictTransportSecurity {
     }
 }
 
-impl Header for StrictTransportSecurity {
-    fn name(&self) -> &'static str {
-        "Strict-Transport-Security"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for StrictTransportSecurity {
+    fn into(self) -> Header {
+        ("Strict-Transport-Security", self.to_string())
     }
 }
 
@@ -501,6 +469,14 @@ impl XContentTypeOptions {
     }
 }
 
+impl XContentTypeOptions {
+    fn as_str(&self) -> &'static str {
+        match self {
+            XContentTypeOptions::NoSniff => "nosniff",
+        }
+    }
+}
+
 impl Display for XContentTypeOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -509,13 +485,9 @@ impl Display for XContentTypeOptions {
     }
 }
 
-impl Header for XContentTypeOptions {
-    fn name(&self) -> &'static str {
-        "X-Content-Type-Options"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for XContentTypeOptions {
+    fn into(self) -> Header {
+        ("X-Content-Type-Options", self.as_str().to_owned())
     }
 }
 
@@ -551,6 +523,15 @@ impl XDNSPrefetchControl {
     }
 }
 
+impl XDNSPrefetchControl {
+    fn as_str(&self) -> &'static str {
+        match self {
+            XDNSPrefetchControl::Off => "off",
+            XDNSPrefetchControl::On => "on",
+        }
+    }
+}
+
 impl Display for XDNSPrefetchControl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -560,13 +541,9 @@ impl Display for XDNSPrefetchControl {
     }
 }
 
-impl Header for XDNSPrefetchControl {
-    fn name(&self) -> &'static str {
-        "X-DNS-Prefetch-Control"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for XDNSPrefetchControl {
+    fn into(self) -> Header {
+        ("X-DNS-Prefetch-Control", self.as_str().to_owned())
     }
 }
 
@@ -596,6 +573,14 @@ impl XDownloadOptions {
     }
 }
 
+impl XDownloadOptions {
+    fn as_str(&self) -> &'static str {
+        match self {
+            XDownloadOptions::NoOpen => "noopen",
+        }
+    }
+}
+
 impl Display for XDownloadOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -604,13 +589,9 @@ impl Display for XDownloadOptions {
     }
 }
 
-impl Header for XDownloadOptions {
-    fn name(&self) -> &'static str {
-        "X-Download-Options"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for XDownloadOptions {
+    fn into(self) -> Header {
+        ("X-Download-Options", self.as_str().to_owned())
     }
 }
 
@@ -667,13 +648,9 @@ impl Display for XFrameOptions {
     }
 }
 
-impl Header for XFrameOptions {
-    fn name(&self) -> &'static str {
-        "X-Frame-Options"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for XFrameOptions {
+    fn into(self) -> Header {
+        ("X-Frame-Options", self.to_string())
     }
 }
 
@@ -735,6 +712,18 @@ impl XPermittedCrossDomainPolicies {
     }
 }
 
+impl XPermittedCrossDomainPolicies {
+    fn as_str(&self) -> &'static str {
+        match self {
+            XPermittedCrossDomainPolicies::None => "none",
+            XPermittedCrossDomainPolicies::MasterOnly => "master-only",
+            XPermittedCrossDomainPolicies::ByContentType => "by-content-type",
+            XPermittedCrossDomainPolicies::ByFtpFilename => "by-ftp-filename",
+            XPermittedCrossDomainPolicies::All => "all",
+        }
+    }
+}
+
 impl Display for XPermittedCrossDomainPolicies {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -747,13 +736,12 @@ impl Display for XPermittedCrossDomainPolicies {
     }
 }
 
-impl Header for XPermittedCrossDomainPolicies {
-    fn name(&self) -> &'static str {
-        "X-Permitted-Cross-Domain-Policies"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for XPermittedCrossDomainPolicies {
+    fn into(self) -> Header {
+        (
+            "X-Permitted-Cross-Domain-Policies",
+            self.as_str().to_owned(),
+        )
     }
 }
 
@@ -839,13 +827,9 @@ impl Display for XXSSProtection {
     }
 }
 
-impl Header for XXSSProtection {
-    fn name(&self) -> &'static str {
-        "X-XSS-Protection"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for XXSSProtection {
+    fn into(self) -> Header {
+        ("X-XSS-Protection", self.to_string())
     }
 }
 
@@ -879,13 +863,9 @@ impl Display for XPoweredBy {
     }
 }
 
-impl Header for XPoweredBy {
-    fn name(&self) -> &'static str {
-        "X-Powered-By"
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for XPoweredBy {
+    fn into(self) -> Header {
+        ("X-Powered-By", self.to_string())
     }
 }
 
@@ -1436,17 +1416,16 @@ impl Default for ContentSecurityPolicy<'_> {
     }
 }
 
-impl Header for ContentSecurityPolicy<'_> {
-    fn name(&self) -> &'static str {
-        if self.report_only {
-            "Content-Security-Policy-Report-Only"
-        } else {
-            "Content-Security-Policy"
-        }
-    }
-
-    fn value(&self) -> String {
-        self.to_string()
+impl Into<Header> for ContentSecurityPolicy<'_> {
+    fn into(self) -> Header {
+        (
+            if self.report_only {
+                "Content-Security-Policy-Report-Only"
+            } else {
+                "Content-Security-Policy"
+            },
+            self.to_string(),
+        )
     }
 }
 
@@ -1468,8 +1447,10 @@ impl Header for ContentSecurityPolicy<'_> {
 /// let helmet = Helmet::new()
 ///    .add(StrictTransportSecurity::new().max_age(31536000).include_sub_domains());
 /// ```
+
+#[derive(Clone)]
 pub struct Helmet {
-    pub headers: Vec<Box<dyn Header>>,
+    pub headers: Vec<Header>,
 }
 
 #[allow(clippy::should_implement_trait)]
@@ -1482,8 +1463,8 @@ impl Helmet {
     }
 
     /// Add header to the middleware
-    pub fn add(mut self, header: impl Header + 'static) -> Self {
-        self.headers.push(Box::new(header));
+    pub fn add(mut self, header: impl Into<Header>) -> Self {
+        self.headers.push(header.into());
         self
     }
 }

@@ -1,16 +1,9 @@
-# Rust Helmet
+# `actix-web-helmet` - Security Middleware for `ntex` web framework
 
-A security middleware library for popular Rust web frameworks.
+[![crate](https://img.shields.io/crates/v/actix-web-helmet.svg)](https://crates.io/crates/actix-web-helmet)
+[![docs](https://docs.rs/actix-web-helmet/badge.svg)](https://docs.rs/actix-web-helmet)
 
-## Packages
-
-- `ntex-helmet` is a security middleware for the `ntex` web framework.
-- `actix-web-helmet` is a security middleware for the `actix-web` web framework.
-- `rocket-helmet` is a security middleware for the `rocket` web framework. **_Coming Soon_**
-- `warp-helmet` is a security middleware for the `warp` web framework. **_Coming Soon_**
-- `axum-helmet` is a security middleware for the `axum` web framework.
-
-- `helmet-core` is the core library that the other packages are built on. It can be used to build a security middleware for any web framework.
+`actix-web-helmet` is a security middleware for the `actix-web` web framework. It's based on the [helmet](https://helmetjs.github.io/) middleware for Node.js.
 
 It works by setting HTTP headers for you. These headers can help protect your app from some well-known web vulnerabilities:
 
@@ -28,3 +21,32 @@ It works by setting HTTP headers for you. These headers can help protect your ap
 - [X-XSS-Protection](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection)
 - [X-Powered-By](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Powered-By)
 - [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy)
+
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+actix-web-helmet = "0.1"
+```
+
+## Example
+
+```rust
+use actix_web::{web, App, HttpResponse};
+use actix_web_helmet::Helmet;
+
+#[actix_web::main]
+async fn main() {
+    let app = App::new()
+        .wrap(Helmet::default())
+        .service(web::resource("/").to(|| HttpResponse::Ok()));
+
+    // ...
+}
+```
+
+## License
+
+This project is licensed under the [MIT license](LICENSE).

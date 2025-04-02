@@ -1,16 +1,22 @@
 [package]
-name = "helmet-core"
+name = "actix-web-helmet"
 version = "0.2.0"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
-description = "HTTP security headers middleware core for various web frameworks"
+description = "HTTP security headers middleware for actix-web"
 readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/danielkov/rust-helmet"
 repository = "https://github.com/danielkov/rust-helmet"
-keywords = ["helmet", "security", "middleware", "rust", "web"]
+keywords = ["actix", "actix-web", "helmet", "security", "middleware"]
 categories = ["web-programming", "http", "middleware"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+actix-web = { version = "4.10" }
+helmet-core = { path = "../helmet-core", version = "0.2.0" }
+futures = { version = "0.3" }
+
+[dev-dependencies]
+actix-web = { version = "4.10" }

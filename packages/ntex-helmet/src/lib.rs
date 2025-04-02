@@ -75,12 +75,10 @@
 //! }
 //! ```
 use ntex::{
-    forward_poll_ready, forward_poll_shutdown,
     http::{
         header::{HeaderName, HeaderValue},
         HeaderMap,
     },
-    util::BoxFuture,
     web::{WebRequest, WebResponse},
     Middleware, Service, ServiceCtx,
 };
@@ -102,26 +100,20 @@ where
 {
     type Response = WebResponse;
     type Error = S::Error;
-    type Future<'f>
-        = BoxFuture<'f, Result<Self::Response, Self::Error>>
-    where
-        S: 'f,
-        E: 'f;
 
-    forward_poll_ready!(service);
-    forward_poll_shutdown!(service);
+    async fn call(
+        &self,
+        req: WebRequest<E>,
+        ctx: ServiceCtx<'_, Self>,
+    ) -> Result<Self::Response, Self::Error> {
+        let mut res = ctx.call(&self.service, req).await?;
 
-    fn call<'a>(&'a self, req: WebRequest<E>, ctx: ServiceCtx<'a, Self>) -> Self::Future<'a> {
-        Box::pin(async move {
-            let mut res = ctx.call(&self.service, req).await?;
+        // set response headers
+        for (name, value) in self.headers.iter() {
+            res.headers_mut().append(name.clone(), value.clone());
+        }
 
-            // set response headers
-            for (name, value) in self.headers.iter() {
-                res.headers_mut().append(name.clone(), value.clone());
-            }
-
-            Ok(res)
-        })
+        Ok(res)
     }
 }
 
@@ -138,7 +130,7 @@ impl Helmet {
         Self(HelmetCore::new())
     }
 
-    pub fn add(self, middleware: impl helmet_core::Header + 'static) -> Self {
+    pub fn add(self, middleware: impl Into<helmet_core::Header>) -> Self {
         Self(self.0.add(middleware))
     }
 }
@@ -149,8 +141,8 @@ impl<S> Middleware<S> for Helmet {
     fn create(&self, service: S) -> Self::Service {
         let mut headers = HeaderMap::new();
         for header in self.0.headers.iter() {
-            let name = HeaderName::try_from(header.name()).expect("invalid header name");
-            let value = HeaderValue::from_str(&header.value()).expect("invalid header value");
+            let name = HeaderName::try_from(header.0).expect("invalid header name");
+            let value = HeaderValue::from_str(&header.1).expect("invalid header value");
             headers.append(name, value);
         }
 
