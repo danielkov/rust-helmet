@@ -9,7 +9,11 @@ license = "MIT"
 homepage = "https://github.com/danielkov/rust-helmet"
 repository = "https://github.com/danielkov/rust-helmet"
 keywords = ["helmet", "security", "middleware", "rust", "web"]
-categories = ["web-programming", "http", "middleware"]
+categories = [
+  "web-programming",
+  "network-programming",
+  "web-programming::http-server",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
