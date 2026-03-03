@@ -65,7 +65,6 @@ use core::fmt::Display;
 ///    }
 /// }
 /// ```
-
 pub type Header = (&'static str, String);
 
 /// Manages `Cross-Origin-Embedder-Policy` header
@@ -120,9 +119,9 @@ impl CrossOriginEmbedderPolicy {
     }
 }
 
-impl Into<Header> for CrossOriginEmbedderPolicy {
-    fn into(self) -> Header {
-        ("Cross-Origin-Embedder-Policy", self.as_str().to_owned())
+impl From<CrossOriginEmbedderPolicy> for Header {
+    fn from(val: CrossOriginEmbedderPolicy) -> Self {
+        ("Cross-Origin-Embedder-Policy", val.as_str().to_owned())
     }
 }
 
@@ -174,9 +173,9 @@ impl CrossOriginOpenerPolicy {
     }
 }
 
-impl Into<Header> for CrossOriginOpenerPolicy {
-    fn into(self) -> Header {
-        ("Cross-Origin-Opener-Policy", self.as_str().to_owned())
+impl From<CrossOriginOpenerPolicy> for Header {
+    fn from(val: CrossOriginOpenerPolicy) -> Self {
+        ("Cross-Origin-Opener-Policy", val.as_str().to_owned())
     }
 }
 
@@ -228,9 +227,9 @@ impl CrossOriginResourcePolicy {
     }
 }
 
-impl Into<Header> for CrossOriginResourcePolicy {
-    fn into(self) -> Header {
-        ("Cross-Origin-Resource-Policy", self.as_str().to_owned())
+impl From<CrossOriginResourcePolicy> for Header {
+    fn from(val: CrossOriginResourcePolicy) -> Self {
+        ("Cross-Origin-Resource-Policy", val.as_str().to_owned())
     }
 }
 
@@ -269,9 +268,9 @@ impl OriginAgentCluster {
     }
 }
 
-impl Into<Header> for OriginAgentCluster {
-    fn into(self) -> Header {
-        ("Origin-Agent-Cluster", self.as_str().to_owned())
+impl From<OriginAgentCluster> for Header {
+    fn from(val: OriginAgentCluster) -> Self {
+        ("Origin-Agent-Cluster", val.as_str().to_owned())
     }
 }
 
@@ -358,9 +357,9 @@ impl ReferrerPolicy {
     }
 }
 
-impl Into<Header> for ReferrerPolicy {
-    fn into(self) -> Header {
-        ("Referrer-Policy", self.as_str().to_owned())
+impl From<ReferrerPolicy> for Header {
+    fn from(val: ReferrerPolicy) -> Self {
+        ("Referrer-Policy", val.as_str().to_owned())
     }
 }
 
@@ -437,9 +436,9 @@ impl Display for StrictTransportSecurity {
     }
 }
 
-impl Into<Header> for StrictTransportSecurity {
-    fn into(self) -> Header {
-        ("Strict-Transport-Security", self.to_string())
+impl From<StrictTransportSecurity> for Header {
+    fn from(val: StrictTransportSecurity) -> Self {
+        ("Strict-Transport-Security", val.to_string())
     }
 }
 
@@ -485,9 +484,9 @@ impl Display for XContentTypeOptions {
     }
 }
 
-impl Into<Header> for XContentTypeOptions {
-    fn into(self) -> Header {
-        ("X-Content-Type-Options", self.as_str().to_owned())
+impl From<XContentTypeOptions> for Header {
+    fn from(val: XContentTypeOptions) -> Self {
+        ("X-Content-Type-Options", val.as_str().to_owned())
     }
 }
 
@@ -541,9 +540,9 @@ impl Display for XDNSPrefetchControl {
     }
 }
 
-impl Into<Header> for XDNSPrefetchControl {
-    fn into(self) -> Header {
-        ("X-DNS-Prefetch-Control", self.as_str().to_owned())
+impl From<XDNSPrefetchControl> for Header {
+    fn from(val: XDNSPrefetchControl) -> Self {
+        ("X-DNS-Prefetch-Control", val.as_str().to_owned())
     }
 }
 
@@ -589,9 +588,9 @@ impl Display for XDownloadOptions {
     }
 }
 
-impl Into<Header> for XDownloadOptions {
-    fn into(self) -> Header {
-        ("X-Download-Options", self.as_str().to_owned())
+impl From<XDownloadOptions> for Header {
+    fn from(val: XDownloadOptions) -> Self {
+        ("X-Download-Options", val.as_str().to_owned())
     }
 }
 
@@ -648,9 +647,9 @@ impl Display for XFrameOptions {
     }
 }
 
-impl Into<Header> for XFrameOptions {
-    fn into(self) -> Header {
-        ("X-Frame-Options", self.to_string())
+impl From<XFrameOptions> for Header {
+    fn from(val: XFrameOptions) -> Self {
+        ("X-Frame-Options", val.to_string())
     }
 }
 
@@ -736,12 +735,9 @@ impl Display for XPermittedCrossDomainPolicies {
     }
 }
 
-impl Into<Header> for XPermittedCrossDomainPolicies {
-    fn into(self) -> Header {
-        (
-            "X-Permitted-Cross-Domain-Policies",
-            self.as_str().to_owned(),
-        )
+impl From<XPermittedCrossDomainPolicies> for Header {
+    fn from(val: XPermittedCrossDomainPolicies) -> Self {
+        ("X-Permitted-Cross-Domain-Policies", val.as_str().to_owned())
     }
 }
 
@@ -827,9 +823,9 @@ impl Display for XXSSProtection {
     }
 }
 
-impl Into<Header> for XXSSProtection {
-    fn into(self) -> Header {
-        ("X-XSS-Protection", self.to_string())
+impl From<XXSSProtection> for Header {
+    fn from(val: XXSSProtection) -> Self {
+        ("X-XSS-Protection", val.to_string())
     }
 }
 
@@ -863,9 +859,9 @@ impl Display for XPoweredBy {
     }
 }
 
-impl Into<Header> for XPoweredBy {
-    fn into(self) -> Header {
-        ("X-Powered-By", self.to_string())
+impl From<XPoweredBy> for Header {
+    fn from(val: XPoweredBy) -> Self {
+        ("X-Powered-By", val.to_string())
     }
 }
 
@@ -912,291 +908,6 @@ impl Into<Header> for XPoweredBy {
 ///    .default_src(vec!["'self'", "https://youtube.com"])
 ///    .font_src(vec!["'self'", "https://youtube.com"]);
 /// ```
-#[derive(Clone)]
-pub enum ContentSecurityPolicyDirective<'a> {
-    /// Warning: Instead of child-src, if you want to regulate nested browsing contexts and workers, you should use the frame-src and worker-src directives, respectively.
-    ChildSrc(Vec<&'a str>),
-    /// Applies to XMLHttpRequest (AJAX), WebSocket or EventSource. If not allowed the browser emulates a 400 HTTP status code.
-    ConnectSrc(Vec<&'a str>),
-    /// The default-src is the default policy for loading content such as JavaScript, Images, CSS, Font's, AJAX requests, Frames, HTML5 Media. See the list of directives to see which values are allowed as default.
-    DefaultSrc(Vec<&'a str>),
-    /// Defines valid sources for fonts loaded using @font-face.
-    FontSrc(Vec<&'a str>),
-    /// Defines valid sources for nested browsing contexts loading using elements such as `<frame>` and `<iframe>`.
-    FrameSrc(Vec<&'a str>),
-    /// Defines valid sources of images and favicons.
-    ImgSrc(Vec<&'a str>),
-    /// Specifies which manifest can be applied to the resource.
-    ManifestSrc(Vec<&'a str>),
-    /// Defines valid sources for loading media using the `<audio>` and `<video>` elements.
-    MediaSrc(Vec<&'a str>),
-    /// Defines valid sources for the `<object>`, `<embed>`, and `<applet>` elements.
-    ObjectSrc(Vec<&'a str>),
-    /// Specifies which referrer to use when fetching the resource.
-    PrefetchSrc(Vec<&'a str>),
-    /// Defines valid sources for JavaScript.
-    ScriptSrc(Vec<&'a str>),
-    /// Defines valid sources for JavaScript inline event handlers.
-    ScriptSrcElem(Vec<&'a str>),
-    /// Defines valid sources for JavaScript inline event handlers.
-    ScriptSrcAttr(Vec<&'a str>),
-    /// Defines valid sources for stylesheets.
-    StyleSrc(Vec<&'a str>),
-    /// Defines valid sources for stylesheets inline event handlers.
-    StyleSrcElem(Vec<&'a str>),
-    /// Defines valid sources for stylesheets inline event handlers.
-    StyleSrcAttr(Vec<&'a str>),
-    /// Defines valid sources for Worker, SharedWorker, or ServiceWorker scripts.
-    WorkerSrc(Vec<&'a str>),
-    // Document directives
-    /// Restricts the URLs which can be used in a document's `<base>` element.
-    BaseUri(Vec<&'a str>),
-    /// Enables a sandbox for the requested resource similar to the iframe sandbox attribute. The sandbox applies a same origin policy, prevents popups, plugins and script execution is blocked. You can keep the sandbox value empty to keep all restrictions in place, or add values: allow-forms allow-same-origin allow-scripts allow-popups, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-presentation, allow-popups-to-escape-sandbox, allow-top-navigation, allow-top-navigation-by-user-activation.
-    Sandbox(Vec<&'a str>),
-    // Navigation directives
-    /// Restricts the URLs which can be used as the target of a form submissions from a given context.
-    FormAction(Vec<&'a str>),
-    /// Specifies valid parents that may embed a page using `<frame>`, `<iframe>`, `<object>`, `<embed>`, or `<applet>`.
-    FrameAncestors(Vec<&'a str>),
-    // Reporting directives
-    /// Enables reporting of violations.
-    ///
-    /// report-uri is deprecated, however, it is still supported by browsers that don't yet support report-to. ReportTo will apply both to report-uri and report-to with the same values, to support browsers that support both.
-    ReportTo(Vec<&'a str>),
-    // Other
-    /// Specifies which trusted types are required by a resource.
-    RequireTrustedTypesFor(Vec<&'a str>),
-    /// Specifies which trusted types are defined by a resource.
-    TrustedTypes(Vec<&'a str>),
-    /// Block HTTP requests on insecure elements.
-    UpgradeInsecureRequests,
-}
-
-impl<'a> ContentSecurityPolicyDirective<'a> {
-    /// child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as `<frame>`` and `<iframe>`.
-    pub fn child_src(values: Vec<&'a str>) -> Self {
-        Self::ChildSrc(values)
-    }
-
-    /// connect-src: Applies to XMLHttpRequest (AJAX), WebSocket or EventSource. If not allowed the browser emulates a 400 HTTP status code.
-    pub fn connect_src(values: Vec<&'a str>) -> Self {
-        Self::ConnectSrc(values)
-    }
-
-    /// default-src: The default-src is the default policy for loading content such as JavaScript, Images, CSS, Font's, AJAX requests, Frames, HTML5 Media. See the list of directives to see which values are allowed as default.
-    pub fn default_src(values: Vec<&'a str>) -> Self {
-        Self::DefaultSrc(values)
-    }
-
-    /// font-src: Defines valid sources for fonts loaded using @font-face.
-    pub fn font_src(values: Vec<&'a str>) -> Self {
-        Self::FontSrc(values)
-    }
-
-    /// frame-src: Defines valid sources for nested browsing contexts loading using elements such as `<frame>` and `<iframe>`.
-    pub fn frame_src(values: Vec<&'a str>) -> Self {
-        Self::FrameSrc(values)
-    }
-
-    /// img-src: Defines valid sources of images and favicons.
-    pub fn img_src(values: Vec<&'a str>) -> Self {
-        Self::ImgSrc(values)
-    }
-
-    /// manifest-src: Specifies which manifest can be applied to the resource.
-    pub fn manifest_src(values: Vec<&'a str>) -> Self {
-        Self::ManifestSrc(values)
-    }
-
-    /// media-src: Defines valid sources for loading media using the `<audio>` and `<video>` elements.
-    pub fn media_src(values: Vec<&'a str>) -> Self {
-        Self::MediaSrc(values)
-    }
-
-    /// object-src: Defines valid sources for the `<object>`, `<embed>`, and `<applet>` elements.
-    pub fn object_src(values: Vec<&'a str>) -> Self {
-        Self::ObjectSrc(values)
-    }
-
-    /// prefetch-src: Specifies which referrer to use when fetching the resource.
-    pub fn prefetch_src(values: Vec<&'a str>) -> Self {
-        Self::PrefetchSrc(values)
-    }
-
-    /// script-src: Defines valid sources for JavaScript.
-    pub fn script_src(values: Vec<&'a str>) -> Self {
-        Self::ScriptSrc(values)
-    }
-
-    /// script-src-elem: Defines valid sources for JavaScript inline event handlers.
-    pub fn script_src_elem(values: Vec<&'a str>) -> Self {
-        Self::ScriptSrcElem(values)
-    }
-
-    /// script-src-attr: Defines valid sources for JavaScript inline event handlers.
-    pub fn script_src_attr(values: Vec<&'a str>) -> Self {
-        Self::ScriptSrcAttr(values)
-    }
-
-    /// style-src: Defines valid sources for stylesheets.
-    pub fn style_src(values: Vec<&'a str>) -> Self {
-        Self::StyleSrc(values)
-    }
-
-    /// style-src-elem: Defines valid sources for stylesheets inline event handlers.
-    pub fn style_src_elem(values: Vec<&'a str>) -> Self {
-        Self::StyleSrcElem(values)
-    }
-
-    /// style-src-attr: Defines valid sources for stylesheets inline event handlers.
-    pub fn style_src_attr(values: Vec<&'a str>) -> Self {
-        Self::StyleSrcAttr(values)
-    }
-
-    /// worker-src: Defines valid sources for Worker, SharedWorker, or ServiceWorker scripts.
-    pub fn worker_src(values: Vec<&'a str>) -> Self {
-        Self::WorkerSrc(values)
-    }
-
-    /// base-uri: Restricts the URLs which can be used in a document's `<base>` element.
-    pub fn base_uri(values: Vec<&'a str>) -> Self {
-        Self::BaseUri(values)
-    }
-
-    /// sandbox: Enables a sandbox for the requested resource similar to the iframe sandbox attribute. The sandbox applies a same origin policy, prevents popups, plugins and script execution is blocked. You can keep the sandbox value empty to keep all restrictions in place, or add values: allow-forms allow-same-origin allow-scripts allow-popups, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-presentation, allow-popups-to-escape-sandbox, allow-top-navigation, allow-top-navigation-by-user-activation.
-    pub fn sandbox(values: Vec<&'a str>) -> Self {
-        Self::Sandbox(values)
-    }
-
-    /// form-action: Restricts the URLs which can be used as the target of a form submissions from a given context.
-    pub fn form_action(values: Vec<&'a str>) -> Self {
-        Self::FormAction(values)
-    }
-
-    /// frame-ancestors: Specifies valid parents that may embed a page using `<frame>`, `<iframe>`, `<object>`, `<embed>`, or `<applet>`.
-    pub fn frame_ancestors(values: Vec<&'a str>) -> Self {
-        Self::FrameAncestors(values)
-    }
-
-    /// report-to: Enables reporting of violations.
-    pub fn report_to(values: Vec<&'a str>) -> Self {
-        Self::ReportTo(values)
-    }
-
-    /// require-trusted-types-for: Specifies which trusted types are required by a resource.
-    pub fn require_trusted_types_for(values: Vec<&'a str>) -> Self {
-        Self::RequireTrustedTypesFor(values)
-    }
-
-    /// trusted-types: Specifies which trusted types are defined by a resource.
-    pub fn trusted_types(values: Vec<&'a str>) -> Self {
-        Self::TrustedTypes(values)
-    }
-
-    /// Block HTTP requests on insecure elements.
-    pub fn upgrade_insecure_requests() -> Self {
-        Self::UpgradeInsecureRequests
-    }
-}
-
-impl Display for ContentSecurityPolicyDirective<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ContentSecurityPolicyDirective::ChildSrc(values) => {
-                write!(f, "child-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::ConnectSrc(values) => {
-                write!(f, "connect-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::DefaultSrc(values) => {
-                write!(f, "default-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::FontSrc(values) => {
-                write!(f, "font-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::FrameSrc(values) => {
-                write!(f, "frame-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::ImgSrc(values) => {
-                write!(f, "img-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::ManifestSrc(values) => {
-                write!(f, "manifest-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::MediaSrc(values) => {
-                write!(f, "media-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::ObjectSrc(values) => {
-                write!(f, "object-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::PrefetchSrc(values) => {
-                write!(f, "prefetch-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::ScriptSrc(values) => {
-                write!(f, "script-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::ScriptSrcElem(values) => {
-                write!(f, "script-src-elem {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::ScriptSrcAttr(values) => {
-                write!(f, "script-src-attr {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::StyleSrc(values) => {
-                write!(f, "style-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::StyleSrcElem(values) => {
-                write!(f, "style-src-elem {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::StyleSrcAttr(values) => {
-                write!(f, "style-src-attr {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::WorkerSrc(values) => {
-                write!(f, "worker-src {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::BaseUri(values) => {
-                write!(f, "base-uri {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::Sandbox(values) => {
-                write!(f, "sandbox {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::FormAction(values) => {
-                write!(f, "form-action {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::FrameAncestors(values) => {
-                write!(f, "frame-ancestors {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::ReportTo(values) => {
-                let values = values.join(" ");
-                write!(f, "report-to {}; report-uri {}", values, values)
-            }
-            ContentSecurityPolicyDirective::RequireTrustedTypesFor(values) => {
-                write!(f, "require-trusted-types-for {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::TrustedTypes(values) => {
-                write!(f, "trusted-types {}", values.join(" "))
-            }
-            ContentSecurityPolicyDirective::UpgradeInsecureRequests => {
-                write!(f, "upgrade-insecure-requests")
-            }
-        }
-    }
-}
-
-/// Manages `Content-Security-Policy` header
-///
-/// The HTTP Content-Security-Policy response header allows web site administrators to control resources the user agent is allowed to load for a given page. With a few exceptions, policies mostly involve specifying server origins and script endpoints. This helps guard against cross-site scripting attacks (XSS).
-///
-/// # Examples
-///
-/// ```
-/// use helmet_core::ContentSecurityPolicy;
-///
-/// let content_security_policy = ContentSecurityPolicy::default()
-///    .child_src(vec!["'self'", "https://youtube.com"])
-///    .connect_src(vec!["'self'", "https://youtube.com"])
-///    .default_src(vec!["'self'", "https://youtube.com"])
-///    .font_src(vec!["'self'", "https://youtube.com"]);
-/// ```
 ///
 /// ## Report only
 ///
@@ -1214,148 +925,214 @@ impl Display for ContentSecurityPolicyDirective<'_> {
 /// ```
 #[derive(Clone)]
 pub struct ContentSecurityPolicy<'a> {
-    directives: Vec<ContentSecurityPolicyDirective<'a>>,
+    child_src: Option<Vec<&'a str>>,
+    connect_src: Option<Vec<&'a str>>,
+    default_src: Option<Vec<&'a str>>,
+    font_src: Option<Vec<&'a str>>,
+    frame_src: Option<Vec<&'a str>>,
+    img_src: Option<Vec<&'a str>>,
+    manifest_src: Option<Vec<&'a str>>,
+    media_src: Option<Vec<&'a str>>,
+    object_src: Option<Vec<&'a str>>,
+    prefetch_src: Option<Vec<&'a str>>,
+    script_src: Option<Vec<&'a str>>,
+    script_src_elem: Option<Vec<&'a str>>,
+    script_src_attr: Option<Vec<&'a str>>,
+    style_src: Option<Vec<&'a str>>,
+    style_src_elem: Option<Vec<&'a str>>,
+    style_src_attr: Option<Vec<&'a str>>,
+    worker_src: Option<Vec<&'a str>>,
+    base_uri: Option<Vec<&'a str>>,
+    sandbox: Option<Vec<&'a str>>,
+    form_action: Option<Vec<&'a str>>,
+    frame_ancestors: Option<Vec<&'a str>>,
+    report_to: Option<Vec<&'a str>>,
+    require_trusted_types_for: Option<Vec<&'a str>>,
+    trusted_types: Option<Vec<&'a str>>,
+    upgrade_insecure_requests: bool,
     report_only: bool,
 }
 
 impl<'a> ContentSecurityPolicy<'a> {
     pub fn new() -> Self {
         Self {
-            directives: Vec::new(),
+            child_src: None,
+            connect_src: None,
+            default_src: None,
+            font_src: None,
+            frame_src: None,
+            img_src: None,
+            manifest_src: None,
+            media_src: None,
+            object_src: None,
+            prefetch_src: None,
+            script_src: None,
+            script_src_elem: None,
+            script_src_attr: None,
+            style_src: None,
+            style_src_elem: None,
+            style_src_attr: None,
+            worker_src: None,
+            base_uri: None,
+            sandbox: None,
+            form_action: None,
+            frame_ancestors: None,
+            report_to: None,
+            require_trusted_types_for: None,
+            trusted_types: None,
+            upgrade_insecure_requests: false,
             report_only: false,
         }
     }
 
-    fn directive(mut self, directive: ContentSecurityPolicyDirective<'a>) -> Self {
-        self.directives.push(directive);
+    /// child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as `<frame>` and `<iframe>`.
+    pub fn child_src(mut self, values: Vec<&'a str>) -> Self {
+        self.child_src = Some(values);
         self
     }
 
-    /// child-src: Defines valid sources for web workers and nested browsing contexts loaded using elements such as `<frame>` and `<iframe>`.
-    pub fn child_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::child_src(values))
-    }
-
     /// connect-src: Applies to XMLHttpRequest (AJAX), WebSocket or EventSource. If not allowed the browser emulates a 400 HTTP status code.
-    pub fn connect_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::connect_src(values))
+    pub fn connect_src(mut self, values: Vec<&'a str>) -> Self {
+        self.connect_src = Some(values);
+        self
     }
 
     /// default-src: The default-src is the default policy for loading content such as JavaScript, Images, CSS, Font's, AJAX requests, Frames, HTML5 Media. See the list of directives to see which values are allowed as default.
-    pub fn default_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::default_src(values))
+    pub fn default_src(mut self, values: Vec<&'a str>) -> Self {
+        self.default_src = Some(values);
+        self
     }
 
     /// font-src: Defines valid sources for fonts loaded using @font-face.
-    pub fn font_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::font_src(values))
+    pub fn font_src(mut self, values: Vec<&'a str>) -> Self {
+        self.font_src = Some(values);
+        self
     }
 
     /// frame-src: Defines valid sources for nested browsing contexts loading using elements such as `<frame>` and `<iframe>`.
-    pub fn frame_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::frame_src(values))
+    pub fn frame_src(mut self, values: Vec<&'a str>) -> Self {
+        self.frame_src = Some(values);
+        self
     }
 
     /// img-src: Defines valid sources of images and favicons.
-    pub fn img_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::img_src(values))
+    pub fn img_src(mut self, values: Vec<&'a str>) -> Self {
+        self.img_src = Some(values);
+        self
     }
 
     /// manifest-src: Specifies which manifest can be applied to the resource.
-    pub fn manifest_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::manifest_src(values))
+    pub fn manifest_src(mut self, values: Vec<&'a str>) -> Self {
+        self.manifest_src = Some(values);
+        self
     }
 
     /// media-src: Defines valid sources for loading media using the `<audio>` and `<video>` elements.
-    pub fn media_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::media_src(values))
+    pub fn media_src(mut self, values: Vec<&'a str>) -> Self {
+        self.media_src = Some(values);
+        self
     }
 
     /// object-src: Defines valid sources for the `<object>`, `<embed>`, and `<applet>` elements.
-    pub fn object_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::object_src(values))
+    pub fn object_src(mut self, values: Vec<&'a str>) -> Self {
+        self.object_src = Some(values);
+        self
     }
 
     /// prefetch-src: Specifies which referrer to use when fetching the resource.
-    pub fn prefetch_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::prefetch_src(values))
+    pub fn prefetch_src(mut self, values: Vec<&'a str>) -> Self {
+        self.prefetch_src = Some(values);
+        self
     }
 
     /// script-src: Defines valid sources for JavaScript.
-    pub fn script_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::script_src(values))
+    pub fn script_src(mut self, values: Vec<&'a str>) -> Self {
+        self.script_src = Some(values);
+        self
     }
 
     /// script-src-elem: Defines valid sources for JavaScript inline event handlers.
-    pub fn script_src_elem(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::script_src_elem(values))
+    pub fn script_src_elem(mut self, values: Vec<&'a str>) -> Self {
+        self.script_src_elem = Some(values);
+        self
     }
 
     /// script-src-attr: Defines valid sources for JavaScript inline event handlers.
-    pub fn script_src_attr(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::script_src_attr(values))
+    pub fn script_src_attr(mut self, values: Vec<&'a str>) -> Self {
+        self.script_src_attr = Some(values);
+        self
     }
 
     /// style-src: Defines valid sources for stylesheets.
-    pub fn style_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::style_src(values))
+    pub fn style_src(mut self, values: Vec<&'a str>) -> Self {
+        self.style_src = Some(values);
+        self
     }
 
     /// style-src-elem: Defines valid sources for stylesheets inline event handlers.
-    pub fn style_src_elem(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::style_src_elem(values))
+    pub fn style_src_elem(mut self, values: Vec<&'a str>) -> Self {
+        self.style_src_elem = Some(values);
+        self
     }
 
     /// style-src-attr: Defines valid sources for stylesheets inline event handlers.
-    pub fn style_src_attr(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::style_src_attr(values))
+    pub fn style_src_attr(mut self, values: Vec<&'a str>) -> Self {
+        self.style_src_attr = Some(values);
+        self
     }
 
     /// worker-src: Defines valid sources for Worker, SharedWorker, or ServiceWorker scripts.
-    pub fn worker_src(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::worker_src(values))
+    pub fn worker_src(mut self, values: Vec<&'a str>) -> Self {
+        self.worker_src = Some(values);
+        self
     }
 
     /// base-uri: Restricts the URLs which can be used in a document's `<base>` element.
-    pub fn base_uri(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::base_uri(values))
+    pub fn base_uri(mut self, values: Vec<&'a str>) -> Self {
+        self.base_uri = Some(values);
+        self
     }
 
     /// sandbox: Enables a sandbox for the requested resource similar to the iframe sandbox attribute. The sandbox applies a same origin policy, prevents popups, plugins and script execution is blocked. You can keep the sandbox value empty to keep all restrictions in place, or add values: allow-forms allow-same-origin allow-scripts allow-popups, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-presentation, allow-popups-to-escape-sandbox, allow-top-navigation, allow-top-navigation-by-user-activation.
-    pub fn sandbox(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::sandbox(values))
+    pub fn sandbox(mut self, values: Vec<&'a str>) -> Self {
+        self.sandbox = Some(values);
+        self
     }
 
     /// form-action: Restricts the URLs which can be used as the target of a form submissions from a given context.
-    pub fn form_action(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::form_action(values))
+    pub fn form_action(mut self, values: Vec<&'a str>) -> Self {
+        self.form_action = Some(values);
+        self
     }
 
     /// frame-ancestors: Specifies valid parents that may embed a page using `<frame>`, `<iframe>`, `<object>`, `<embed>`, or `<applet>`.
-    pub fn frame_ancestors(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::frame_ancestors(values))
+    pub fn frame_ancestors(mut self, values: Vec<&'a str>) -> Self {
+        self.frame_ancestors = Some(values);
+        self
     }
 
     /// report-to: Enables reporting of violations.
-    pub fn report_to(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::report_to(values))
+    pub fn report_to(mut self, values: Vec<&'a str>) -> Self {
+        self.report_to = Some(values);
+        self
     }
 
     /// require-trusted-types-for: Specifies which trusted types are required by a resource.
-    pub fn require_trusted_types_for(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::require_trusted_types_for(
-            values,
-        ))
+    pub fn require_trusted_types_for(mut self, values: Vec<&'a str>) -> Self {
+        self.require_trusted_types_for = Some(values);
+        self
     }
 
     /// trusted-types: Specifies which trusted types are defined by a resource.
-    pub fn trusted_types(self, values: Vec<&'a str>) -> Self {
-        self.directive(ContentSecurityPolicyDirective::trusted_types(values))
+    pub fn trusted_types(mut self, values: Vec<&'a str>) -> Self {
+        self.trusted_types = Some(values);
+        self
     }
 
     /// Block HTTP requests on insecure elements.
-    pub fn upgrade_insecure_requests(self) -> Self {
-        self.directive(ContentSecurityPolicyDirective::upgrade_insecure_requests())
+    pub fn upgrade_insecure_requests(mut self) -> Self {
+        self.upgrade_insecure_requests = true;
+        self
     }
 
     /// Enable report only mode
@@ -1373,13 +1150,87 @@ impl<'a> ContentSecurityPolicy<'a> {
 
 impl Display for ContentSecurityPolicy<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let directives = self
-            .directives
-            .iter()
-            .map(|d| d.to_string())
-            .collect::<Vec<String>>()
-            .join("; ");
-        write!(f, "{}", directives)
+        let mut directives: Vec<String> = Vec::new();
+        let directive = |name: &str, values: &[&str]| format!("{} {}", name, values.join(" "));
+
+        if let Some(v) = &self.default_src {
+            directives.push(directive("default-src", v));
+        }
+        if let Some(v) = &self.base_uri {
+            directives.push(directive("base-uri", v));
+        }
+        if let Some(v) = &self.child_src {
+            directives.push(directive("child-src", v));
+        }
+        if let Some(v) = &self.connect_src {
+            directives.push(directive("connect-src", v));
+        }
+        if let Some(v) = &self.font_src {
+            directives.push(directive("font-src", v));
+        }
+        if let Some(v) = &self.form_action {
+            directives.push(directive("form-action", v));
+        }
+        if let Some(v) = &self.frame_ancestors {
+            directives.push(directive("frame-ancestors", v));
+        }
+        if let Some(v) = &self.frame_src {
+            directives.push(directive("frame-src", v));
+        }
+        if let Some(v) = &self.img_src {
+            directives.push(directive("img-src", v));
+        }
+        if let Some(v) = &self.manifest_src {
+            directives.push(directive("manifest-src", v));
+        }
+        if let Some(v) = &self.media_src {
+            directives.push(directive("media-src", v));
+        }
+        if let Some(v) = &self.object_src {
+            directives.push(directive("object-src", v));
+        }
+        if let Some(v) = &self.prefetch_src {
+            directives.push(directive("prefetch-src", v));
+        }
+        if let Some(v) = &self.script_src {
+            directives.push(directive("script-src", v));
+        }
+        if let Some(v) = &self.script_src_elem {
+            directives.push(directive("script-src-elem", v));
+        }
+        if let Some(v) = &self.script_src_attr {
+            directives.push(directive("script-src-attr", v));
+        }
+        if let Some(v) = &self.style_src {
+            directives.push(directive("style-src", v));
+        }
+        if let Some(v) = &self.style_src_elem {
+            directives.push(directive("style-src-elem", v));
+        }
+        if let Some(v) = &self.style_src_attr {
+            directives.push(directive("style-src-attr", v));
+        }
+        if let Some(v) = &self.worker_src {
+            directives.push(directive("worker-src", v));
+        }
+        if let Some(v) = &self.sandbox {
+            directives.push(directive("sandbox", v));
+        }
+        if let Some(v) = &self.report_to {
+            let values = v.join(" ");
+            directives.push(format!("report-to {}; report-uri {}", values, values));
+        }
+        if let Some(v) = &self.require_trusted_types_for {
+            directives.push(directive("require-trusted-types-for", v));
+        }
+        if let Some(v) = &self.trusted_types {
+            directives.push(directive("trusted-types", v));
+        }
+        if self.upgrade_insecure_requests {
+            directives.push("upgrade-insecure-requests".to_string());
+        }
+
+        write!(f, "{}", directives.join("; "))
     }
 }
 
@@ -1416,15 +1267,15 @@ impl Default for ContentSecurityPolicy<'_> {
     }
 }
 
-impl Into<Header> for ContentSecurityPolicy<'_> {
-    fn into(self) -> Header {
+impl From<ContentSecurityPolicy<'_>> for Header {
+    fn from(val: ContentSecurityPolicy<'_>) -> Self {
         (
-            if self.report_only {
+            if val.report_only {
                 "Content-Security-Policy-Report-Only"
             } else {
                 "Content-Security-Policy"
             },
-            self.to_string(),
+            val.to_string(),
         )
     }
 }
@@ -1504,5 +1355,44 @@ impl Default for Helmet {
             .add(XFrameOptions::same_origin())
             .add(XPermittedCrossDomainPolicies::none())
             .add(XXSSProtection::off())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn csp_default_output() {
+        assert_eq!(
+            ContentSecurityPolicy::default().to_string(),
+            "default-src 'self'; base-uri 'self'; font-src 'self' https: data:; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; object-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self' https: 'unsafe-inline'; upgrade-insecure-requests"
+        );
+    }
+
+    #[test]
+    fn csp_default_override_replaces_directive() {
+        assert_eq!(
+            ContentSecurityPolicy::default()
+                .script_src(vec!["'self'", "'unsafe-inline'", "'unsafe-eval'"])
+                .to_string(),
+            "default-src 'self'; base-uri 'self'; font-src 'self' https: data:; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src-attr 'none'; style-src 'self' https: 'unsafe-inline'; upgrade-insecure-requests"
+        );
+    }
+
+    #[test]
+    fn csp_default_override_multiple_directives() {
+        assert_eq!(
+            ContentSecurityPolicy::default()
+                .script_src(vec!["'self'", "'unsafe-inline'"])
+                .img_src(vec!["*"])
+                .to_string(),
+            "default-src 'self'; base-uri 'self'; font-src 'self' https: data:; form-action 'self'; frame-ancestors 'self'; img-src *; object-src 'none'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' https: 'unsafe-inline'; upgrade-insecure-requests"
+        );
+    }
+
+    #[test]
+    fn csp_new_is_empty() {
+        assert_eq!(ContentSecurityPolicy::new().to_string(), "");
     }
 }

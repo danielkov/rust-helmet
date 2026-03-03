@@ -105,6 +105,7 @@ pub struct HelmetMiddleware<S> {
 /// use actix_web::{web, App, HttpServer};
 /// use actix_web_helmet::Helmet;
 /// ```
+#[derive(Default)]
 pub struct Helmet(HelmetCore);
 
 impl Helmet {
@@ -114,6 +115,7 @@ impl Helmet {
     }
 
     /// Add a header to the middleware.
+    #[allow(clippy::should_implement_trait)]
     pub fn add(self, middleware: impl Into<helmet_core::Header>) -> Self {
         Self(self.0.add(middleware))
     }
@@ -150,12 +152,6 @@ where
         //     inner: self.0.clone(),
         //     service,
         // })
-    }
-}
-
-impl Default for Helmet {
-    fn default() -> Self {
-        Self(HelmetCore::default())
     }
 }
 
