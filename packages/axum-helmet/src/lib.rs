@@ -173,7 +173,7 @@ mod tests {
                     .add(helmet_core::XXSSProtection::on().mode_block()),
             ));
 
-        let server = TestServer::new(test_app).expect("failed to create test server");
+        let server = TestServer::new(test_app);
 
         let res = server.get("/").await;
 

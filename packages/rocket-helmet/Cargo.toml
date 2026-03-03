@@ -1,31 +1,24 @@
 [package]
-name = "axum-helmet"
-version = "0.3.1"
+name = "rocket-helmet"
+version = "0.3.0"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
-description = "HTTP security headers middleware core for axum web framework"
+description = "HTTP security headers middleware for Rocket web framework"
 readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/danielkov/rust-helmet"
 repository = "https://github.com/danielkov/rust-helmet"
-keywords = ["helmet", "security", "middleware", "rust", "axum"]
+keywords = ["helmet", "security", "middleware", "rust", "rocket"]
 categories = [
   "web-programming",
   "network-programming",
   "web-programming::http-server",
 ]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-axum = "0.8"
 helmet-core = { path = "../helmet-core", version = "0.3.0" }
-tower = "0.5"
-tower-service = "0.3"
-http = "1.4"
-pin-project-lite = "0.2"
-tokio = "1.50"
+rocket = "0.5"
 
 [dev-dependencies]
-axum-test = "19"
+rocket = { version = "0.5", features = ["json"] }
 tokio = { version = "1.50", features = ["rt-multi-thread"] }

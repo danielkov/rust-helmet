@@ -4,5 +4,10 @@ members = [
   "packages/helmet-core",
   "packages/axum-helmet",
   "packages/actix-web-helmet",
+  "packages/rocket-helmet",
+  "packages/warp-helmet",
+  "packages/poem-helmet",
+  "packages/salvo-helmet",
+  "packages/tide-helmet",
 ]
 resolver = "2"

@@ -1,25 +1,24 @@
 [package]
-name = "ntex-helmet"
-version = "0.4.0"
+name = "salvo-helmet"
+version = "0.3.0"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
-description = "HTTP security headers middleware for ntex-web"
+description = "HTTP security headers middleware for Salvo web framework"
 readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/danielkov/rust-helmet"
 repository = "https://github.com/danielkov/rust-helmet"
-keywords = ["ntex", "ntex-web", "helmet", "security", "middleware"]
+keywords = ["helmet", "security", "middleware", "rust", "salvo"]
 categories = [
   "web-programming",
   "network-programming",
   "web-programming::http-server",
 ]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-ntex = { version = "3", features = ["tokio"] }
 helmet-core = { path = "../helmet-core", version = "0.3.0" }
+salvo = "0.89"
+http = "1.4"
 
 [dev-dependencies]
-ntex = { version = "3", features = ["tokio"] }
+tokio = { version = "1.50", features = ["rt-multi-thread", "macros"] }

@@ -1,6 +1,6 @@
 [package]
 name = "actix-web-helmet"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
 description = "HTTP security headers middleware for actix-web"
@@ -18,9 +18,9 @@ categories = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = { version = "4.10" }
+actix-web = { version = "4.13" }
 helmet-core = { path = "../helmet-core", version = "0.3.0" }
 futures = { version = "0.3" }
 
 [dev-dependencies]
-actix-web = { version = "4.10" }
+actix-web = { version = "4.13" }
