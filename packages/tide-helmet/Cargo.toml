@@ -1,25 +1,24 @@
 [package]
-name = "ntex-helmet"
-version = "0.4.0"
+name = "tide-helmet"
+version = "0.3.0"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
-description = "HTTP security headers middleware for ntex-web"
+description = "HTTP security headers middleware for Tide web framework"
 readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/danielkov/rust-helmet"
 repository = "https://github.com/danielkov/rust-helmet"
-keywords = ["ntex", "ntex-web", "helmet", "security", "middleware"]
+keywords = ["helmet", "security", "middleware", "rust", "tide"]
 categories = [
   "web-programming",
   "network-programming",
   "web-programming::http-server",
 ]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-ntex = { version = "3", features = ["tokio"] }
 helmet-core = { path = "../helmet-core", version = "0.3.0" }
+tide = "0.16"
+async-trait = "0.1"
 
 [dev-dependencies]
-ntex = { version = "3", features = ["tokio"] }
+async-std = { version = "1", features = ["attributes"] }

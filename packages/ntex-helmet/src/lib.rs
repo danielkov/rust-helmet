@@ -12,9 +12,9 @@
 //!
 //! #[ntex::main]
 //! async fn main() -> std::io::Result<()> {
-//!     web::HttpServer::new(move || {
+//!     web::HttpServer::new(move || async {
 //!         web::App::new()
-//!            .wrap(Helmet::default())
+//!            .middleware(Helmet::default())
 //!            .service(web::resource("/").to(|| async { "Hello, world!" }))
 //!     })
 //!     .bind(("127.0.0.1", 8080))?
@@ -54,9 +54,9 @@
 //!
 //! #[ntex::main]
 //! async fn main() -> std::io::Result<()> {
-//!     web::HttpServer::new(move || {
+//!     web::HttpServer::new(move || async {
 //!         web::App::new()
-//!             .wrap(
+//!             .middleware(
 //!                 Helmet::new()
 //!                     .add(
 //!                         ContentSecurityPolicy::new()
@@ -79,6 +79,7 @@ use ntex::{
         header::{HeaderName, HeaderValue},
         HeaderMap,
     },
+    service::cfg::SharedCfg,
     web::{WebRequest, WebResponse},
     Middleware, Service, ServiceCtx,
 };
@@ -135,10 +136,10 @@ impl Helmet {
     }
 }
 
-impl<S> Middleware<S> for Helmet {
+impl<S> Middleware<S, SharedCfg> for Helmet {
     type Service = HelmetMiddleware<S>;
 
-    fn create(&self, service: S) -> Self::Service {
+    fn create(&self, service: S, _: SharedCfg) -> Self::Service {
         let mut headers = HeaderMap::new();
         for header in self.0.headers.iter() {
             let name = HeaderName::try_from(header.0).expect("invalid header name");
@@ -171,7 +172,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginEmbedderPolicy::unsafe_none())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -187,7 +188,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginEmbedderPolicy::require_corp())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -203,7 +204,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginEmbedderPolicy::credentialless())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -219,7 +220,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginOpenerPolicy::same_origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -235,7 +236,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginOpenerPolicy::same_origin_allow_popups())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -251,7 +252,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginOpenerPolicy::unsafe_none())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -267,7 +268,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginResourcePolicy::same_origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -283,7 +284,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginResourcePolicy::cross_origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -299,7 +300,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginResourcePolicy::same_site())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -315,7 +316,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(OriginAgentCluster::new(true))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -335,7 +336,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(OriginAgentCluster::new(false))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -355,7 +356,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::no_referrer())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -371,7 +372,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::no_referrer_when_downgrade())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -387,7 +388,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -400,7 +401,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::origin_when_cross_origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -418,7 +419,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::same_origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -436,7 +437,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::strict_origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -454,7 +455,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::strict_origin_when_cross_origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -472,7 +473,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::unsafe_url())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -487,7 +488,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(StrictTransportSecurity::new().max_age(31536000))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -512,7 +513,7 @@ mod tests {
                         .max_age(31536000)
                         .include_sub_domains(),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -533,7 +534,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(StrictTransportSecurity::new().max_age(31536000).preload())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -559,7 +560,7 @@ mod tests {
                         .include_sub_domains()
                         .preload(),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -580,7 +581,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XContentTypeOptions::nosniff())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -601,7 +602,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XDNSPrefetchControl::off())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -622,7 +623,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XDNSPrefetchControl::on())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -643,7 +644,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XDownloadOptions::noopen())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -664,7 +665,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XFrameOptions::deny())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -687,7 +688,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XFrameOptions::same_origin())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -710,7 +711,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XFrameOptions::allow_from("https://example.com"))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -733,7 +734,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::none())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -753,7 +754,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::master_only())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -773,7 +774,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::by_content_type())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -793,7 +794,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::by_ftp_filename())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -815,7 +816,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::all())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -835,7 +836,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XXSSProtection::off())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -846,7 +847,11 @@ mod tests {
 
     #[ntex::test]
     async fn test_x_xss_protection_one() {
-        let mw = Pipeline::new(Helmet::new().add(XXSSProtection::on()).create(ok_service()));
+        let mw = Pipeline::new(
+            Helmet::new()
+                .add(XXSSProtection::on())
+                .create(ok_service(), SharedCfg::default()),
+        );
 
         let req = TestRequest::default()
             .header("Origin", "https://example.com")
@@ -861,7 +866,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XXSSProtection::on().mode_block())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -882,7 +887,7 @@ mod tests {
                         .mode_block()
                         .report("https://example.com/report-xss-attack"),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -905,7 +910,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::default())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -928,7 +933,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPoweredBy::new("PHP 4.2.0"))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -942,7 +947,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().child_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -965,7 +970,7 @@ mod tests {
                 .add(
                     ContentSecurityPolicy::new().connect_src(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -988,7 +993,7 @@ mod tests {
                 .add(
                     ContentSecurityPolicy::new().default_src(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1008,7 +1013,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().font_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1028,7 +1033,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().frame_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1048,7 +1053,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().img_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1067,7 +1072,7 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .manifest_src(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1083,7 +1088,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().media_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1099,7 +1104,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().object_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1118,7 +1123,7 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .prefetch_src(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1134,7 +1139,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().script_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1153,7 +1158,7 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .script_src_elem(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1172,7 +1177,7 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .script_src_attr(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1188,7 +1193,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().style_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1207,7 +1212,7 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .style_src_attr(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1226,7 +1231,7 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .style_src_elem(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1242,7 +1247,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().worker_src(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1258,7 +1263,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().base_uri(vec!["'self'", "https://youtube.com"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1274,7 +1279,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().sandbox(vec!["allow-forms", "allow-scripts"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1292,7 +1297,7 @@ mod tests {
                 .add(
                     ContentSecurityPolicy::new().form_action(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -1313,7 +1318,7 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .frame_ancestors(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default()
@@ -1331,7 +1336,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().report_to(vec!["default", "endpoint", "group"]))
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1355,7 +1360,7 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .trusted_types(vec!["'self'", "https://youtube.com"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1378,7 +1383,7 @@ mod tests {
                 .add(
                     ContentSecurityPolicy::new().require_trusted_types_for(vec!["script", "style"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1399,7 +1404,7 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().upgrade_insecure_requests())
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();
@@ -1412,7 +1417,7 @@ mod tests {
 
     #[ntex::test]
     async fn test_helmet_default() {
-        let mw = Pipeline::new(Helmet::default().create(ok_service()));
+        let mw = Pipeline::new(Helmet::default().create(ok_service(), SharedCfg::default()));
 
         let req = TestRequest::default().to_srv_request();
         let resp = mw.call(req).await.unwrap();
@@ -1462,7 +1467,7 @@ mod tests {
                         .report_only()
                         .base_uri(vec!["'self'"]),
                 )
-                .create(ok_service()),
+                .create(ok_service(), SharedCfg::default()),
         );
 
         let req = TestRequest::default().to_srv_request();

@@ -45,8 +45,12 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: publish
+      - name: Publish crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          for pkg in helmet-core actix-web-helmet axum-helmet ntex-helmet poem-helmet rocket-helmet salvo-helmet tide-helmet warp-helmet; do
+            echo "Publishing $pkg..."
+            cargo publish -p "$pkg" || echo "Skipping $pkg (already published or error)"
+            sleep 5
+          done
