@@ -602,7 +602,7 @@ impl From<XDownloadOptions> for Header {
 ///
 /// - deny: The page cannot be displayed in a frame, regardless of the site attempting to do so.
 /// - sameorigin: The page can only be displayed in a frame on the same origin as the page itself.
-/// - allow-from: The page can only be displayed in a frame on the specified origin. Requires a URI as an argument.
+/// - allow-from: **Deprecated.** Ignored by all modern browsers. Use `ContentSecurityPolicy::new().frame_ancestors(...)` instead.
 ///
 /// # Examples
 ///
@@ -612,14 +612,14 @@ impl From<XDownloadOptions> for Header {
 /// let x_frame_options = XFrameOptions::deny();
 ///
 /// let x_frame_options = XFrameOptions::same_origin();
-///
-/// let x_frame_options = XFrameOptions::allow_from("https://example.com");
 /// ```
 #[derive(Clone)]
 pub enum XFrameOptions {
     Deny,
     SameOrigin,
-    // deprecated - use Content-Security-Policy instead see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options#allow-from_origin
+    #[deprecated(
+        note = "ALLOW-FROM is ignored by modern browsers. Use ContentSecurityPolicy::new().frame_ancestors(...) instead."
+    )]
     AllowFrom(String),
 }
 
@@ -632,13 +632,18 @@ impl XFrameOptions {
         Self::SameOrigin
     }
 
+    #[deprecated(
+        note = "ALLOW-FROM is ignored by modern browsers. Use ContentSecurityPolicy::new().frame_ancestors(...) instead."
+    )]
     pub fn allow_from(uri: &str) -> Self {
+        #[allow(deprecated)]
         Self::AllowFrom(uri.to_string())
     }
 }
 
 impl Display for XFrameOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[allow(deprecated)]
         match self {
             XFrameOptions::Deny => write!(f, "DENY"),
             XFrameOptions::SameOrigin => write!(f, "SAMEORIGIN"),
@@ -892,7 +897,8 @@ impl From<XPoweredBy> for Header {
 /// - sandbox: Enables a sandbox for the requested resource similar to the iframe sandbox attribute. The sandbox applies a same origin policy, prevents popups, plugins and script execution is blocked. You can keep the sandbox value empty to keep all restrictions in place, or add values: allow-forms allow-same-origin allow-scripts allow-popups, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-presentation, allow-popups-to-escape-sandbox, allow-top-navigation, allow-top-navigation-by-user-activation.
 /// - form-action: Restricts the URLs which can be used as the target of a form submissions from a given context.
 /// - frame-ancestors: Specifies valid parents that may embed a page using `<frame>`, `<iframe>`, `<object>`, `<embed>`, or `<applet>`.
-/// - report-to: Enables reporting of violations.
+/// - report-to: Specifies the endpoint name (defined via `Reporting-Endpoints` header) to send violation reports to.
+/// - report-uri: Specifies URL(s) to send violation reports to (deprecated but still widely supported).
 /// - require-trusted-types-for: Specifies which trusted types are required by a resource.
 /// - trusted-types: Specifies which trusted types are defined by a resource.
 /// - upgrade-insecure-requests: Block HTTP requests on insecure elements.
@@ -913,14 +919,15 @@ impl From<XPoweredBy> for Header {
 ///
 /// In report only mode, the browser will not block the request, but will send a report to the specified URI.
 ///
-/// Make sure to set the `report-to` directive.
+/// Make sure to set the `report-to` and/or `report-uri` directives.
 ///
 /// ```
 /// use helmet_core::ContentSecurityPolicy;
 ///
 /// let content_security_policy = ContentSecurityPolicy::default()
 ///    .child_src(vec!["'self'", "https://youtube.com"])
-///    .report_to(vec!["https://example.com/report"])
+///    .report_to("csp-endpoint")
+///    .report_uri(vec!["https://example.com/report"])
 ///    .report_only();
 /// ```
 #[derive(Clone)]
@@ -946,7 +953,8 @@ pub struct ContentSecurityPolicy<'a> {
     sandbox: Option<Vec<&'a str>>,
     form_action: Option<Vec<&'a str>>,
     frame_ancestors: Option<Vec<&'a str>>,
-    report_to: Option<Vec<&'a str>>,
+    report_to: Option<&'a str>,
+    report_uri: Option<Vec<&'a str>>,
     require_trusted_types_for: Option<Vec<&'a str>>,
     trusted_types: Option<Vec<&'a str>>,
     upgrade_insecure_requests: bool,
@@ -978,6 +986,7 @@ impl<'a> ContentSecurityPolicy<'a> {
             form_action: None,
             frame_ancestors: None,
             report_to: None,
+            report_uri: None,
             require_trusted_types_for: None,
             trusted_types: None,
             upgrade_insecure_requests: false,
@@ -1111,9 +1120,15 @@ impl<'a> ContentSecurityPolicy<'a> {
         self
     }
 
-    /// report-to: Enables reporting of violations.
-    pub fn report_to(mut self, values: Vec<&'a str>) -> Self {
-        self.report_to = Some(values);
+    /// report-to: Specifies the endpoint name (defined via `Reporting-Endpoints` header) to send violation reports to.
+    pub fn report_to(mut self, endpoint: &'a str) -> Self {
+        self.report_to = Some(endpoint);
+        self
+    }
+
+    /// report-uri: Specifies URL(s) to send violation reports to (deprecated but still widely supported).
+    pub fn report_uri(mut self, values: Vec<&'a str>) -> Self {
+        self.report_uri = Some(values);
         self
     }
 
@@ -1217,8 +1232,10 @@ impl Display for ContentSecurityPolicy<'_> {
             directives.push(directive("sandbox", v));
         }
         if let Some(v) = &self.report_to {
-            let values = v.join(" ");
-            directives.push(format!("report-to {}; report-uri {}", values, values));
+            directives.push(format!("report-to {}", v));
+        }
+        if let Some(v) = &self.report_uri {
+            directives.push(directive("report-uri", v));
         }
         if let Some(v) = &self.require_trusted_types_for {
             directives.push(directive("require-trusted-types-for", v));
@@ -1280,6 +1297,26 @@ impl From<ContentSecurityPolicy<'_>> for Header {
     }
 }
 
+/// Error returned when a header name or value cannot be converted to a valid HTTP header.
+#[derive(Debug)]
+pub enum HelmetError {
+    /// The header name is not a valid HTTP header name.
+    InvalidHeaderName(String),
+    /// The header value is not a valid HTTP header value.
+    InvalidHeaderValue(String),
+}
+
+impl std::fmt::Display for HelmetError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HelmetError::InvalidHeaderName(name) => write!(f, "invalid header name: {}", name),
+            HelmetError::InvalidHeaderValue(msg) => write!(f, "invalid header value: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for HelmetError {}
+
 /// Helmet security headers middleware for ntex services
 ///
 /// # Examples
@@ -1298,7 +1335,6 @@ impl From<ContentSecurityPolicy<'_>> for Header {
 /// let helmet = Helmet::new()
 ///    .add(StrictTransportSecurity::new().max_age(31536000).include_sub_domains());
 /// ```
-
 #[derive(Clone)]
 pub struct Helmet {
     pub headers: Vec<Header>,

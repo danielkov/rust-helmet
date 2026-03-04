@@ -16,14 +16,15 @@
 //! }
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), std::io::Error> {
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let app = Route::new()
 //!         .at("/", get(index))
-//!         .with(Helmet::default());
+//!         .with(Helmet::default().into_middleware()?);
 //!
 //!     Server::new(TcpListener::bind("0.0.0.0:3000"))
 //!         .run(app)
-//!         .await
+//!         .await?;
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -54,7 +55,7 @@
 //!
 //! ```no_run
 //! use poem::{get, handler, listener::TcpListener, EndpointExt, Route, Server};
-//! use poem_helmet::{Helmet, ContentSecurityPolicy, CrossOriginOpenerPolicy};
+//! use poem_helmet::{Helmet, ContentSecurityPolicy, CrossOriginOpenerPolicy, HelmetMiddleware};
 //!
 //! #[handler]
 //! fn index() -> &'static str {
@@ -62,22 +63,24 @@
 //! }
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), std::io::Error> {
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let helmet: HelmetMiddleware = Helmet::new()
+//!         .add(
+//!             ContentSecurityPolicy::new()
+//!                 .default_src(vec!["'self'"])
+//!                 .script_src(vec!["'self'", "https://cdn.example.com"]),
+//!         )
+//!         .add(CrossOriginOpenerPolicy::same_origin_allow_popups())
+//!         .try_into()?;
+//!
 //!     let app = Route::new()
 //!         .at("/", get(index))
-//!         .with(
-//!             Helmet::new()
-//!                 .add(
-//!                     ContentSecurityPolicy::new()
-//!                         .default_src(vec!["'self'"])
-//!                         .script_src(vec!["'self'", "https://cdn.example.com"]),
-//!                 )
-//!                 .add(CrossOriginOpenerPolicy::same_origin_allow_popups()),
-//!         );
+//!         .with(helmet);
 //!
 //!     Server::new(TcpListener::bind("0.0.0.0:3000"))
 //!         .run(app)
-//!         .await
+//!         .await?;
+//!     Ok(())
 //! }
 //! ```
 use http::header::{HeaderMap, HeaderName, HeaderValue};
@@ -88,60 +91,66 @@ use helmet_core::Helmet as HelmetCore;
 // re-export helmet_core::*, except for the `Helmet` struct
 pub use helmet_core::*;
 
-/// Helmet middleware for Poem.
+/// Helmet header configuration wrapper.
 ///
 /// Use `Helmet::default()` for a sensible set of default security headers,
 /// or `Helmet::new()` to start with no headers and add only the ones you need.
 ///
-/// ```rust
-/// use poem_helmet::Helmet;
+/// Convert to [`HelmetMiddleware`] via `try_into()` to use as Poem middleware.
 ///
-/// let helmet = Helmet::default();
+/// ```rust
+/// use poem_helmet::{Helmet, HelmetMiddleware};
+///
+/// let middleware: HelmetMiddleware = Helmet::default().try_into().unwrap();
 /// ```
-pub struct Helmet {
-    headers: HeaderMap,
-}
-
-impl Default for Helmet {
-    fn default() -> Self {
-        Self::from(HelmetCore::default())
-    }
-}
+#[derive(Default)]
+pub struct Helmet(HelmetCore);
 
 impl Helmet {
     /// Create a new instance of `Helmet` with no headers set.
     pub fn new() -> Self {
-        Self::from(HelmetCore::new())
+        Self(HelmetCore::new())
     }
 
-    /// Add a header to the middleware.
+    /// Add a header.
     #[allow(clippy::should_implement_trait)]
-    pub fn add(mut self, header: impl Into<helmet_core::Header>) -> Self {
-        let header = header.into();
-        let name = HeaderName::try_from(header.0).expect("invalid header name");
-        let value = HeaderValue::from_str(&header.1).expect("invalid header value");
-        self.headers.append(name, value);
-        self
+    pub fn add(self, header: impl Into<helmet_core::Header>) -> Self {
+        Self(self.0.add(header))
+    }
+
+    /// Convert into [`HelmetMiddleware`].
+    ///
+    /// Poem's `EndpointExt::with()` takes `T: Middleware<E>`, but Rust's type
+    /// inference cannot resolve the target type of `try_into()` through the `?`
+    /// operator, so `.with(helmet.try_into()?)` does not compile. This method
+    /// lets you write `.with(helmet.into_middleware()?)` instead.
+    pub fn into_middleware(self) -> Result<HelmetMiddleware, HelmetError> {
+        self.try_into()
     }
 }
 
-impl From<HelmetCore> for Helmet {
-    fn from(core: HelmetCore) -> Self {
-        let headers = core
-            .headers
-            .iter()
-            .map(|header| {
-                (
-                    HeaderName::try_from(header.0).expect("invalid header name"),
-                    HeaderValue::from_str(&header.1).expect("invalid header value"),
-                )
-            })
-            .collect();
-        Self { headers }
+/// The Poem middleware created by converting a [`Helmet`] configuration.
+pub struct HelmetMiddleware {
+    headers: HeaderMap,
+}
+
+impl TryFrom<Helmet> for HelmetMiddleware {
+    type Error = HelmetError;
+
+    fn try_from(helmet: Helmet) -> std::result::Result<Self, Self::Error> {
+        let mut headers = HeaderMap::new();
+        for header in helmet.0.headers.iter() {
+            let name = HeaderName::try_from(header.0)
+                .map_err(|_| HelmetError::InvalidHeaderName(header.0.to_string()))?;
+            let value = HeaderValue::from_str(&header.1)
+                .map_err(|_| HelmetError::InvalidHeaderValue(header.1.clone()))?;
+            headers.insert(name, value);
+        }
+        Ok(Self { headers })
     }
 }
 
-impl<E: Endpoint> Middleware<E> for Helmet {
+impl<E: Endpoint> Middleware<E> for HelmetMiddleware {
     type Output = HelmetEndpoint<E>;
 
     fn transform(&self, ep: E) -> Self::Output {
@@ -152,7 +161,7 @@ impl<E: Endpoint> Middleware<E> for Helmet {
     }
 }
 
-/// The endpoint wrapper created by [`Helmet`] middleware.
+/// The endpoint wrapper created by [`HelmetMiddleware`].
 pub struct HelmetEndpoint<E> {
     ep: E,
     headers: HeaderMap,
@@ -163,8 +172,9 @@ impl<E: Endpoint> Endpoint for HelmetEndpoint<E> {
 
     async fn call(&self, req: Request) -> Result<Self::Output> {
         let mut resp = self.ep.call(req).await?.into_response();
-        resp.headers_mut()
-            .extend(self.headers.iter().map(|(k, v)| (k.clone(), v.clone())));
+        for (name, value) in self.headers.iter() {
+            resp.headers_mut().insert(name.clone(), value.clone());
+        }
         Ok(resp)
     }
 }
@@ -181,12 +191,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_helmet() {
-        let app = Route::new().at("/", index).with(
-            Helmet::new()
-                .add(helmet_core::XContentTypeOptions::nosniff())
-                .add(helmet_core::XFrameOptions::same_origin())
-                .add(helmet_core::XXSSProtection::on().mode_block()),
-        );
+        let mw: HelmetMiddleware = Helmet::new()
+            .add(helmet_core::XContentTypeOptions::nosniff())
+            .add(helmet_core::XFrameOptions::same_origin())
+            .add(helmet_core::XXSSProtection::on().mode_block())
+            .try_into()
+            .unwrap();
+
+        let app = Route::new().at("/", index).with(mw);
 
         let client = TestClient::new(app);
         let resp = client.get("/").send().await;
@@ -199,7 +211,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_helmet_default() {
-        let app = Route::new().at("/", index).with(Helmet::default());
+        let mw: HelmetMiddleware = Helmet::default().try_into().unwrap();
+        let app = Route::new().at("/", index).with(mw);
 
         let client = TestClient::new(app);
         let resp = client.get("/").send().await;

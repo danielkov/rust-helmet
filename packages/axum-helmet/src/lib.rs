@@ -5,18 +5,13 @@
 //! ```no_run
 //! use axum::{routing::get, Router};
 //! use axum_helmet::{Helmet, HelmetLayer};
-//! use helmet_core::Helmet as HelmetCore;
 //!
 //! #[tokio::main]
 //! async fn main() {
+//!     let layer: HelmetLayer = Helmet::default().try_into().unwrap();
 //!     let app = Router::new()
 //!         .route("/", get(|| async { "Hello, world!" }))
-//!         .layer(HelmetLayer::new(
-//!             Helmet::new()
-//!                 .add(helmet_core::XContentTypeOptions::nosniff())
-//!                 .add(helmet_core::XFrameOptions::same_origin())
-//!                 .add(helmet_core::XXSSProtection::on().mode_block()),
-//!         ));
+//!         .layer(layer);
 //!
 //!     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 //!     axum::serve(listener, app).await.unwrap();
@@ -37,8 +32,39 @@ use helmet_core::Helmet as HelmetCore;
 // re-export helmet_core::* for convenience
 pub use helmet_core::*;
 
+/// Helmet header configuration wrapper.
+///
+/// Use `Helmet::default()` for a sensible set of default security headers,
+/// or `Helmet::new()` to start with no headers and add only the ones you need.
+///
+/// Convert to [`HelmetLayer`] via `try_into()` to use as axum middleware.
+///
+/// ```rust
+/// use axum_helmet::{Helmet, HelmetLayer};
+///
+/// let layer: HelmetLayer = Helmet::default().try_into().unwrap();
+/// ```
+#[derive(Default)]
+pub struct Helmet(HelmetCore);
+
+impl Helmet {
+    /// Create a new instance of `Helmet` with no headers set.
+    pub fn new() -> Self {
+        Self(HelmetCore::new())
+    }
+
+    /// Add a header.
+    #[allow(clippy::should_implement_trait)]
+    pub fn add(self, header: impl Into<helmet_core::Header>) -> Self {
+        Self(self.0.add(header))
+    }
+
+    pub fn into_layer(self) -> Result<HelmetLayer, HelmetError> {
+        self.try_into()
+    }
+}
+
 /// Create a [`tower::layer::Layer`] that adds helmet headers to responses.
-/// See [`helmet_core::Helmet`] for more details.
 ///
 /// # Example
 ///
@@ -48,14 +74,16 @@ pub use helmet_core::*;
 ///
 /// #[tokio::main]
 /// async fn main() {
+///     let layer: HelmetLayer = Helmet::new()
+///         .add(helmet_core::XContentTypeOptions::nosniff())
+///         .add(helmet_core::XFrameOptions::same_origin())
+///         .add(helmet_core::XXSSProtection::on().mode_block())
+///         .try_into()
+///         .unwrap();
+///
 ///     let app = Router::new()
 ///         .route("/", get(|| async { "Hello, world!" }))
-///         .layer(HelmetLayer::new(
-///             Helmet::new()
-///                 .add(helmet_core::XContentTypeOptions::nosniff())
-///                 .add(helmet_core::XFrameOptions::same_origin())
-///                 .add(helmet_core::XXSSProtection::on().mode_block()),
-///         ));
+///         .layer(layer);
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 ///     axum::serve(listener, app).await.unwrap();
@@ -66,19 +94,19 @@ pub struct HelmetLayer {
     headers: HeaderMap,
 }
 
-impl HelmetLayer {
-    pub fn new(core: HelmetCore) -> Self {
-        let headers = core
-            .headers
-            .iter()
-            .map(|header| {
-                (
-                    HeaderName::try_from(header.0).expect("invalid header name"),
-                    HeaderValue::try_from(&header.1).expect("invalid header value"),
-                )
-            })
-            .collect();
-        Self { headers }
+impl TryFrom<Helmet> for HelmetLayer {
+    type Error = HelmetError;
+
+    fn try_from(helmet: Helmet) -> Result<Self, Self::Error> {
+        let mut headers = HeaderMap::new();
+        for header in helmet.0.headers.iter() {
+            let name = HeaderName::try_from(header.0)
+                .map_err(|_| HelmetError::InvalidHeaderName(header.0.to_string()))?;
+            let value = HeaderValue::try_from(&header.1)
+                .map_err(|_| HelmetError::InvalidHeaderValue(header.1.clone()))?;
+            headers.insert(name, value);
+        }
+        Ok(Self { headers })
     }
 }
 
@@ -96,14 +124,6 @@ impl<S> tower::layer::Layer<S> for HelmetLayer {
 pub struct HelmetInner<S> {
     header_map: HeaderMap,
     inner: S,
-}
-
-impl<S> HelmetInner<S> {
-    pub fn new(inner: S) -> Self {
-        let header_map = HeaderMap::new();
-
-        Self { header_map, inner }
-    }
 }
 
 impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for HelmetInner<S>
@@ -128,7 +148,7 @@ where
 }
 
 pin_project! {
-    /// Response future for [`SetResponseHeader`].
+    /// Response future for [`HelmetInner`].
     #[derive(Debug)]
     pub struct ResponseFuture<F> {
         #[pin]
@@ -147,8 +167,9 @@ where
         let this = self.project();
         let mut res = ready!(this.future.poll(cx)?);
 
-        res.headers_mut()
-            .extend(this.headers.iter().map(|(k, v)| (k.clone(), v.clone())));
+        for (name, value) in this.headers.iter() {
+            res.headers_mut().insert(name.clone(), value.clone());
+        }
 
         Poll::Ready(Ok(res))
     }
@@ -166,12 +187,14 @@ mod tests {
     async fn test_helmet() {
         let test_app = Router::new()
             .route("/", get(|| async { "Hello, world!" }))
-            .layer(HelmetLayer::new(
+            .layer(
                 Helmet::new()
                     .add(helmet_core::XContentTypeOptions::nosniff())
                     .add(helmet_core::XFrameOptions::same_origin())
-                    .add(helmet_core::XXSSProtection::on().mode_block()),
-            ));
+                    .add(helmet_core::XXSSProtection::on().mode_block())
+                    .into_layer()
+                    .unwrap(),
+            );
 
         let server = TestServer::new(test_app);
 
