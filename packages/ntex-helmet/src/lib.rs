@@ -8,14 +8,19 @@
 //!
 //! ```no_run
 //! use ntex::web;
-//! use ntex_helmet::Helmet;
+//! use ntex_helmet::{Helmet, HelmetMiddleware};
 //!
 //! #[ntex::main]
 //! async fn main() -> std::io::Result<()> {
-//!     web::HttpServer::new(move || async {
-//!         web::App::new()
-//!            .middleware(Helmet::default())
-//!            .service(web::resource("/").to(|| async { "Hello, world!" }))
+//!     let handler: HelmetMiddleware = Helmet::default().try_into().unwrap();
+//!
+//!     web::HttpServer::new(move || {
+//!         let handler = handler.clone();
+//!         async move {
+//!             web::App::new()
+//!                .middleware(handler)
+//!                .service(web::resource("/").to(|| async { "Hello, world!" }))
+//!         }
 //!     })
 //!     .bind(("127.0.0.1", 8080))?
 //!     .run()
@@ -50,24 +55,29 @@
 //!
 //! ```no_run
 //! use ntex::web;
-//! use ntex_helmet::{ContentSecurityPolicy, CrossOriginOpenerPolicy, Helmet};
+//! use ntex_helmet::{ContentSecurityPolicy, CrossOriginOpenerPolicy, Helmet, HelmetMiddleware};
 //!
 //! #[ntex::main]
 //! async fn main() -> std::io::Result<()> {
-//!     web::HttpServer::new(move || async {
-//!         web::App::new()
-//!             .middleware(
-//!                 Helmet::new()
-//!                     .add(
-//!                         ContentSecurityPolicy::new()
-//!                             .child_src(vec!["'self'", "https://youtube.com"])
-//!                             .connect_src(vec!["'self'", "https://youtube.com"])
-//!                             .default_src(vec!["'self'", "https://youtube.com"])
-//!                             .font_src(vec!["'self'", "https://youtube.com"]),
-//!                     )
-//!                     .add(CrossOriginOpenerPolicy::same_origin_allow_popups()),
-//!             )
-//!             .service(web::resource("/").to(|| async { "Hello, world!" }))
+//!     let handler: HelmetMiddleware = Helmet::new()
+//!         .add(
+//!             ContentSecurityPolicy::new()
+//!                 .child_src(vec!["'self'", "https://youtube.com"])
+//!                 .connect_src(vec!["'self'", "https://youtube.com"])
+//!                 .default_src(vec!["'self'", "https://youtube.com"])
+//!                 .font_src(vec!["'self'", "https://youtube.com"]),
+//!         )
+//!         .add(CrossOriginOpenerPolicy::same_origin_allow_popups())
+//!         .try_into()
+//!         .unwrap();
+//!
+//!     web::HttpServer::new(move || {
+//!         let handler = handler.clone();
+//!         async move {
+//!             web::App::new()
+//!                 .middleware(handler)
+//!                 .service(web::resource("/").to(|| async { "Hello, world!" }))
+//!         }
 //!     })
 //!     .bind(("127.0.0.1", 4200))?
 //!     .run()
@@ -89,12 +99,81 @@ use helmet_core::Helmet as HelmetCore;
 // re-export helmet_core::*, except for the `Helmet` struct
 pub use helmet_core::*;
 
-pub struct HelmetMiddleware<S> {
+/// Helmet header configuration wrapper.
+///
+/// Use `Helmet::default()` for a sensible set of default security headers,
+/// or `Helmet::new()` to start with no headers and add only the ones you need.
+///
+/// Convert to [`HelmetMiddleware`] via `try_into()` to use as ntex middleware.
+///
+/// ```rust
+/// use ntex_helmet::{Helmet, HelmetMiddleware};
+///
+/// let mw: HelmetMiddleware = Helmet::default().try_into().unwrap();
+/// ```
+#[derive(Default)]
+pub struct Helmet(HelmetCore);
+
+impl Helmet {
+    /// Create a new instance of `Helmet` with no headers set.
+    pub fn new() -> Self {
+        Self(HelmetCore::new())
+    }
+
+    /// Add a header.
+    #[allow(clippy::should_implement_trait)]
+    pub fn add(self, header: impl Into<helmet_core::Header>) -> Self {
+        Self(self.0.add(header))
+    }
+
+    /// Convert into [`HelmetMiddleware`].
+    ///
+    /// This is equivalent to `HelmetMiddleware::try_from(helmet)` but chains
+    /// more naturally after `.add()` calls.
+    pub fn into_middleware(self) -> Result<HelmetMiddleware, HelmetError> {
+        self.try_into()
+    }
+}
+
+/// The ntex middleware created by converting a [`Helmet`] configuration.
+#[derive(Clone)]
+pub struct HelmetMiddleware {
+    headers: HeaderMap,
+}
+
+impl TryFrom<Helmet> for HelmetMiddleware {
+    type Error = HelmetError;
+
+    fn try_from(helmet: Helmet) -> Result<Self, Self::Error> {
+        let mut headers = HeaderMap::new();
+        for header in helmet.0.headers.iter() {
+            let name = HeaderName::try_from(header.0)
+                .map_err(|_| HelmetError::InvalidHeaderName(header.0.to_string()))?;
+            let value = HeaderValue::from_str(&header.1)
+                .map_err(|_| HelmetError::InvalidHeaderValue(header.1.clone()))?;
+            headers.insert(name, value);
+        }
+        Ok(Self { headers })
+    }
+}
+
+impl<S> Middleware<S, SharedCfg> for HelmetMiddleware {
+    type Service = HelmetService<S>;
+
+    fn create(&self, service: S, _: SharedCfg) -> Self::Service {
+        HelmetService {
+            service,
+            headers: self.headers.clone(),
+        }
+    }
+}
+
+pub struct HelmetService<S> {
     service: S,
     headers: HeaderMap,
 }
 
-impl<S, E> Service<WebRequest<E>> for HelmetMiddleware<S>
+impl<S, E> Service<WebRequest<E>> for HelmetService<S>
 where
     S: Service<WebRequest<E>, Response = WebResponse>,
     E: 'static,
@@ -109,45 +188,11 @@ where
     ) -> Result<Self::Response, Self::Error> {
         let mut res = ctx.call(&self.service, req).await?;
 
-        // set response headers
         for (name, value) in self.headers.iter() {
-            res.headers_mut().append(name.clone(), value.clone());
+            res.headers_mut().insert(name.clone(), value.clone());
         }
 
         Ok(res)
-    }
-}
-
-/// Helmet middleware
-/// ```rust
-/// use ntex::web;
-/// use ntex_helmet::Helmet;
-#[derive(Default)]
-pub struct Helmet(HelmetCore);
-
-#[allow(clippy::should_implement_trait)]
-impl Helmet {
-    pub fn new() -> Self {
-        Self(HelmetCore::new())
-    }
-
-    pub fn add(self, middleware: impl Into<helmet_core::Header>) -> Self {
-        Self(self.0.add(middleware))
-    }
-}
-
-impl<S> Middleware<S, SharedCfg> for Helmet {
-    type Service = HelmetMiddleware<S>;
-
-    fn create(&self, service: S, _: SharedCfg) -> Self::Service {
-        let mut headers = HeaderMap::new();
-        for header in self.0.headers.iter() {
-            let name = HeaderName::try_from(header.0).expect("invalid header name");
-            let value = HeaderValue::from_str(&header.1).expect("invalid header value");
-            headers.append(name, value);
-        }
-
-        HelmetMiddleware { service, headers }
     }
 }
 
@@ -172,6 +217,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginEmbedderPolicy::unsafe_none())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -188,6 +235,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginEmbedderPolicy::require_corp())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -204,6 +253,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginEmbedderPolicy::credentialless())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -220,6 +271,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginOpenerPolicy::same_origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -236,6 +289,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginOpenerPolicy::same_origin_allow_popups())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -252,6 +307,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginOpenerPolicy::unsafe_none())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -268,6 +325,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginResourcePolicy::same_origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -284,6 +343,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginResourcePolicy::cross_origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -300,6 +361,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(CrossOriginResourcePolicy::same_site())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -316,6 +379,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(OriginAgentCluster::new(true))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -336,6 +401,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(OriginAgentCluster::new(false))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -356,6 +423,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::no_referrer())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -372,6 +441,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::no_referrer_when_downgrade())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -388,6 +459,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -401,6 +474,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::origin_when_cross_origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -419,6 +494,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::same_origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -437,6 +514,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::strict_origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -455,6 +534,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::strict_origin_when_cross_origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -473,6 +554,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ReferrerPolicy::unsafe_url())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -488,6 +571,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(StrictTransportSecurity::new().max_age(31536000))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -513,6 +598,8 @@ mod tests {
                         .max_age(31536000)
                         .include_sub_domains(),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -534,6 +621,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(StrictTransportSecurity::new().max_age(31536000).preload())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -560,6 +649,8 @@ mod tests {
                         .include_sub_domains()
                         .preload(),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -581,6 +672,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XContentTypeOptions::nosniff())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -602,6 +695,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XDNSPrefetchControl::off())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -623,6 +718,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XDNSPrefetchControl::on())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -644,6 +741,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XDownloadOptions::noopen())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -665,6 +764,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XFrameOptions::deny())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -688,6 +789,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XFrameOptions::same_origin())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -707,10 +810,13 @@ mod tests {
     }
 
     #[ntex::test]
+    #[allow(deprecated)]
     async fn test_x_frame_options_allow_from() {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XFrameOptions::allow_from("https://example.com"))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -734,6 +840,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::none())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -754,6 +862,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::master_only())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -774,6 +884,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::by_content_type())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -794,6 +906,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::by_ftp_filename())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -816,6 +930,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPermittedCrossDomainPolicies::all())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -836,6 +952,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XXSSProtection::off())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -850,6 +968,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XXSSProtection::on())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -866,6 +986,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XXSSProtection::on().mode_block())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -887,6 +1009,8 @@ mod tests {
                         .mode_block()
                         .report("https://example.com/report-xss-attack"),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -910,6 +1034,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::default())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -933,6 +1059,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(XPoweredBy::new("PHP 4.2.0"))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -947,6 +1075,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().child_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -970,6 +1100,8 @@ mod tests {
                 .add(
                     ContentSecurityPolicy::new().connect_src(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -993,6 +1125,8 @@ mod tests {
                 .add(
                     ContentSecurityPolicy::new().default_src(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1013,6 +1147,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().font_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1033,6 +1169,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().frame_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1053,6 +1191,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().img_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1072,6 +1212,8 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .manifest_src(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1088,6 +1230,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().media_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1104,6 +1248,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().object_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1123,6 +1269,8 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .prefetch_src(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1139,6 +1287,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().script_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1158,6 +1308,8 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .script_src_elem(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1177,6 +1329,8 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .script_src_attr(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1193,6 +1347,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().style_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1212,6 +1368,8 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .style_src_attr(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1231,6 +1389,8 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .style_src_elem(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1247,6 +1407,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().worker_src(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1263,6 +1425,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().base_uri(vec!["'self'", "https://youtube.com"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1279,6 +1443,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().sandbox(vec!["allow-forms", "allow-scripts"]))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1297,6 +1463,8 @@ mod tests {
                 .add(
                     ContentSecurityPolicy::new().form_action(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1318,6 +1486,8 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .frame_ancestors(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1335,7 +1505,9 @@ mod tests {
     async fn test_content_security_policy_report_to() {
         let mw = Pipeline::new(
             Helmet::new()
-                .add(ContentSecurityPolicy::new().report_to(vec!["default", "endpoint", "group"]))
+                .add(ContentSecurityPolicy::new().report_to("csp-endpoint"))
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1348,7 +1520,34 @@ mod tests {
                 .unwrap()
                 .to_str()
                 .unwrap(),
-            "report-to default endpoint group; report-uri default endpoint group"
+            "report-to csp-endpoint"
+        );
+    }
+
+    #[ntex::test]
+    async fn test_content_security_policy_report_uri() {
+        let mw = Pipeline::new(
+            Helmet::new()
+                .add(
+                    ContentSecurityPolicy::new()
+                        .report_to("csp-endpoint")
+                        .report_uri(vec!["https://example.com/report"]),
+                )
+                .into_middleware()
+                .unwrap()
+                .create(ok_service(), SharedCfg::default()),
+        );
+
+        let req = TestRequest::default().to_srv_request();
+        let resp = mw.call(req).await.unwrap();
+
+        assert_eq!(
+            resp.headers()
+                .get("Content-Security-Policy")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "report-to csp-endpoint; report-uri https://example.com/report"
         );
     }
 
@@ -1360,6 +1559,8 @@ mod tests {
                     ContentSecurityPolicy::new()
                         .trusted_types(vec!["'self'", "https://youtube.com"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1383,6 +1584,8 @@ mod tests {
                 .add(
                     ContentSecurityPolicy::new().require_trusted_types_for(vec!["script", "style"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1404,6 +1607,8 @@ mod tests {
         let mw = Pipeline::new(
             Helmet::new()
                 .add(ContentSecurityPolicy::new().upgrade_insecure_requests())
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 
@@ -1417,7 +1622,12 @@ mod tests {
 
     #[ntex::test]
     async fn test_helmet_default() {
-        let mw = Pipeline::new(Helmet::default().create(ok_service(), SharedCfg::default()));
+        let mw = Pipeline::new(
+            Helmet::default()
+                .into_middleware()
+                .unwrap()
+                .create(ok_service(), SharedCfg::default()),
+        );
 
         let req = TestRequest::default().to_srv_request();
         let resp = mw.call(req).await.unwrap();
@@ -1467,6 +1677,8 @@ mod tests {
                         .report_only()
                         .base_uri(vec!["'self'"]),
                 )
+                .into_middleware()
+                .unwrap()
                 .create(ok_service(), SharedCfg::default()),
         );
 

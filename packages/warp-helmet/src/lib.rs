@@ -8,11 +8,11 @@
 //!
 //! ```no_run
 //! use warp::Filter;
-//! use warp_helmet::Helmet;
+//! use warp_helmet::{Helmet, HelmetFilter};
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let helmet = Helmet::default();
+//!     let helmet: HelmetFilter = Helmet::default().try_into().unwrap();
 //!
 //!     let route = helmet.wrap(
 //!         warp::path::end().map(|| "Hello, world!")
@@ -45,21 +45,23 @@
 //!
 //! By default if you construct a new instance of `Helmet` it will not set any headers.
 //!
-//! It is possible to configure `Helmet` to set only the headers you want, by using the `add` method to add headers.
+//! It is possible to configure `Helmet` to set only the headers you want, by using the `add` method.
 //!
 //! ```no_run
 //! use warp::Filter;
-//! use warp_helmet::{Helmet, ContentSecurityPolicy, CrossOriginOpenerPolicy};
+//! use warp_helmet::{Helmet, HelmetFilter, ContentSecurityPolicy, CrossOriginOpenerPolicy};
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let helmet = Helmet::new()
+//!     let helmet: HelmetFilter = Helmet::new()
 //!         .add(
 //!             ContentSecurityPolicy::new()
 //!                 .default_src(vec!["'self'"])
 //!                 .script_src(vec!["'self'", "https://cdn.example.com"]),
 //!         )
-//!         .add(CrossOriginOpenerPolicy::same_origin_allow_popups());
+//!         .add(CrossOriginOpenerPolicy::same_origin_allow_popups())
+//!         .try_into()
+//!         .unwrap();
 //!
 //!     let route = helmet.wrap(
 //!         warp::path::end().map(|| "Hello, world!")
@@ -77,47 +79,45 @@ use helmet_core::Helmet as HelmetCore;
 // re-export helmet_core::*, except for the `Helmet` struct
 pub use helmet_core::*;
 
-/// Helmet middleware for Warp.
+/// Helmet header configuration wrapper.
 ///
 /// Use `Helmet::default()` for a sensible set of default security headers,
 /// or `Helmet::new()` to start with no headers and add only the ones you need.
 ///
-/// ```rust
-/// use warp::Filter;
-/// use warp_helmet::Helmet;
+/// Convert to [`HelmetFilter`] via `try_into()` to use with Warp.
 ///
-/// let helmet = Helmet::default();
-/// let route = helmet.wrap(
-///     warp::any().map(|| "Hello, world!")
-/// );
+/// ```rust
+/// use warp_helmet::{Helmet, HelmetFilter};
+///
+/// let filter: HelmetFilter = Helmet::default().try_into().unwrap();
 /// ```
-#[derive(Clone)]
-pub struct Helmet {
-    headers: HeaderMap,
-}
-
-impl Default for Helmet {
-    fn default() -> Self {
-        Self::from(HelmetCore::default())
-    }
-}
+#[derive(Default)]
+pub struct Helmet(HelmetCore);
 
 impl Helmet {
     /// Create a new instance of `Helmet` with no headers set.
     pub fn new() -> Self {
-        Self::from(HelmetCore::new())
+        Self(HelmetCore::new())
     }
 
-    /// Add a header to the middleware.
+    /// Add a header.
     #[allow(clippy::should_implement_trait)]
-    pub fn add(mut self, header: impl Into<helmet_core::Header>) -> Self {
-        let header = header.into();
-        let name = HeaderName::try_from(header.0).expect("invalid header name");
-        let value = HeaderValue::from_str(&header.1).expect("invalid header value");
-        self.headers.append(name, value);
-        self
+    pub fn add(self, header: impl Into<helmet_core::Header>) -> Self {
+        Self(self.0.add(header))
     }
 
+    pub fn into_filter(self) -> Result<HelmetFilter, HelmetError> {
+        self.try_into()
+    }
+}
+
+/// The Warp filter wrapper created by converting a [`Helmet`] configuration.
+#[derive(Clone)]
+pub struct HelmetFilter {
+    headers: HeaderMap,
+}
+
+impl HelmetFilter {
     /// Wrap a filter to add security headers to all its responses.
     pub fn wrap<F, R>(
         self,
@@ -131,26 +131,26 @@ impl Helmet {
         filter.map(move |reply: R| {
             let mut resp = reply.into_response();
             for (name, value) in headers.iter() {
-                resp.headers_mut().append(name, value.clone());
+                resp.headers_mut().insert(name, value.clone());
             }
             resp
         })
     }
 }
 
-impl From<HelmetCore> for Helmet {
-    fn from(core: HelmetCore) -> Self {
-        let headers = core
-            .headers
-            .iter()
-            .map(|header| {
-                (
-                    HeaderName::try_from(header.0).expect("invalid header name"),
-                    HeaderValue::from_str(&header.1).expect("invalid header value"),
-                )
-            })
-            .collect();
-        Self { headers }
+impl TryFrom<Helmet> for HelmetFilter {
+    type Error = HelmetError;
+
+    fn try_from(helmet: Helmet) -> Result<Self, Self::Error> {
+        let mut headers = HeaderMap::new();
+        for header in helmet.0.headers.iter() {
+            let name = HeaderName::try_from(header.0)
+                .map_err(|_| HelmetError::InvalidHeaderName(header.0.to_string()))?;
+            let value = HeaderValue::from_str(&header.1)
+                .map_err(|_| HelmetError::InvalidHeaderValue(header.1.clone()))?;
+            headers.insert(name, value);
+        }
+        Ok(Self { headers })
     }
 }
 
@@ -160,12 +160,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_helmet() {
-        let helmet = Helmet::new()
+        let route = Helmet::new()
             .add(helmet_core::XContentTypeOptions::nosniff())
             .add(helmet_core::XFrameOptions::same_origin())
-            .add(helmet_core::XXSSProtection::on().mode_block());
-
-        let route = helmet.wrap(warp::path::end().map(|| "Hello, world!"));
+            .add(helmet_core::XXSSProtection::on().mode_block())
+            .into_filter()
+            .unwrap()
+            .wrap(warp::path::end().map(|| "Hello, world!"));
 
         let res = warp::test::request().path("/").reply(&route).await;
 
@@ -192,7 +193,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_helmet_default() {
-        let route = Helmet::default().wrap(warp::path::end().map(|| "Hello, world!"));
+        let helmet: HelmetFilter = Helmet::default().try_into().unwrap();
+        let route = helmet.wrap(warp::path::end().map(|| "Hello, world!"));
 
         let res = warp::test::request().path("/").reply(&route).await;
 

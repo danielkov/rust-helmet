@@ -8,7 +8,7 @@
 //!
 //! ```no_run
 //! use actix_web::{web, App, HttpServer, Responder, get};
-//! use actix_web_helmet::Helmet;
+//! use actix_web_helmet::{Helmet, HelmetMiddleware};
 //!
 //! #[get("/")]
 //! async fn index() -> impl Responder {
@@ -17,7 +17,8 @@
 //!
 //! #[actix_web::main]
 //! async fn main() -> std::io::Result<()> {
-//!  HttpServer::new(|| App::new().wrap(Helmet::default()).service(index))
+//!  let helmet: HelmetMiddleware = Helmet::default().try_into().expect("valid headers");
+//!  HttpServer::new(move || App::new().wrap(helmet.clone()).service(index))
 //!      .bind(("127.0.0.1", 8080))?
 //!      .run()
 //!      .await
@@ -47,11 +48,11 @@
 //!
 //! By default if you construct a new instance of `Helmet` it will not set any headers.
 //!
-//! It is possible to configure `Helmet` to set only the headers you want, by using the `add` method to add headers.
+//! It is possible to configure `Helmet` to set only the headers you want, by using the `add` method.
 //!
 //! ```no_run
 //! use actix_web::{get, web, App, HttpServer, Responder};
-//! use actix_web_helmet::{Helmet, ContentSecurityPolicy, CrossOriginOpenerPolicy};
+//! use actix_web_helmet::{Helmet, HelmetMiddleware, ContentSecurityPolicy, CrossOriginOpenerPolicy};
 //!
 //! #[get("/")]
 //! async fn index() -> impl Responder {
@@ -60,22 +61,21 @@
 //!
 //! #[actix_web::main]
 //! async fn main() -> std::io::Result<()> {
-//!     HttpServer::new(|| {
-//!         {
-//!             App::new().wrap(
-//!                 Helmet::new()
-//!                     .add(
-//!                         ContentSecurityPolicy::new()
-//!                             .child_src(vec!["'self'"])
-//!                             .child_src(vec!["'self'", "https://youtube.com"])
-//!                             .connect_src(vec!["'self'", "https://youtube.com"])
-//!                             .default_src(vec!["'self'", "https://youtube.com"])
-//!                             .font_src(vec!["'self'", "https://youtube.com"]),
-//!                     )
-//!                     .add(CrossOriginOpenerPolicy::same_origin_allow_popups()),
-//!             )
-//!         }
-//!         .service(index)
+//!     let helmet: HelmetMiddleware = Helmet::new()
+//!         .add(
+//!             ContentSecurityPolicy::new()
+//!                 .child_src(vec!["'self'"])
+//!                 .child_src(vec!["'self'", "https://youtube.com"])
+//!                 .connect_src(vec!["'self'", "https://youtube.com"])
+//!                 .default_src(vec!["'self'", "https://youtube.com"])
+//!                 .font_src(vec!["'self'", "https://youtube.com"]),
+//!         )
+//!         .add(CrossOriginOpenerPolicy::same_origin_allow_popups())
+//!         .try_into()
+//!         .expect("valid headers");
+//!
+//!     HttpServer::new(move || {
+//!         App::new().wrap(helmet.clone()).service(index)
 //!     })
 //!     .bind(("127.0.0.1", 8080))?
 //!     .run()
@@ -95,15 +95,17 @@ use helmet_core::Helmet as HelmetCore;
 // re-export helmet_core::*, except for the `Helmet` struct
 pub use helmet_core::*;
 
-pub struct HelmetMiddleware<S> {
-    inner: HelmetCore,
-    service: S,
-}
-
-/// Helmet middleware
+/// Helmet header configuration wrapper.
+///
+/// Use `Helmet::default()` for a sensible set of default security headers,
+/// or `Helmet::new()` to start with no headers and add only the ones you need.
+///
+/// Convert to [`HelmetMiddleware`] via `try_into()` to use as actix-web middleware.
+///
 /// ```rust
-/// use actix_web::{web, App, HttpServer};
-/// use actix_web_helmet::Helmet;
+/// use actix_web_helmet::{Helmet, HelmetMiddleware};
+///
+/// let mw: HelmetMiddleware = Helmet::default().try_into().unwrap();
 /// ```
 #[derive(Default)]
 pub struct Helmet(HelmetCore);
@@ -114,50 +116,67 @@ impl Helmet {
         Self(HelmetCore::new())
     }
 
-    /// Add a header to the middleware.
+    /// Add a header.
     #[allow(clippy::should_implement_trait)]
-    pub fn add(self, middleware: impl Into<helmet_core::Header>) -> Self {
-        Self(self.0.add(middleware))
+    pub fn add(self, header: impl Into<helmet_core::Header>) -> Self {
+        Self(self.0.add(header))
+    }
+
+    pub fn into_middleware(self) -> Result<HelmetMiddleware, HelmetError> {
+        self.try_into()
     }
 }
 
-impl<S, B> Transform<S, ServiceRequest> for Helmet
+/// The actix-web middleware created by converting a [`Helmet`] configuration.
+#[derive(Clone)]
+pub struct HelmetMiddleware {
+    headers: Vec<(HeaderName, HeaderValue)>,
+}
+
+impl TryFrom<Helmet> for HelmetMiddleware {
+    type Error = HelmetError;
+
+    fn try_from(helmet: Helmet) -> Result<Self, Self::Error> {
+        let mut headers = Vec::new();
+        for header in helmet.0.headers.iter() {
+            let name = HeaderName::from_bytes(header.0.as_bytes())
+                .map_err(|_| HelmetError::InvalidHeaderName(header.0.to_string()))?;
+            let value = HeaderValue::from_str(&header.1)
+                .map_err(|_| HelmetError::InvalidHeaderValue(header.1.clone()))?;
+            headers.push((name, value));
+        }
+        Ok(Self { headers })
+    }
+}
+
+pub struct HelmetService<S> {
+    headers: Vec<(HeaderName, HeaderValue)>,
+    service: S,
+}
+
+impl<S, B> Transform<S, ServiceRequest> for HelmetMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static, // Add 'static bound
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
     B: 'static,
 {
     type Response = ServiceResponse<B>;
     type Error = Error;
     type InitError = ();
-    // The actual middleware service that will be created
-    type Transform = HelmetMiddleware<S>;
-    // The future that resolves to the middleware service
+    type Transform = HelmetService<S>;
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        // Create the middleware service instance HelmetMiddleware
-        // Clone the inner configuration (HelmetCore).
-        // HelmetCore should derive Clone or you might need to wrap it in Rc/Arc.
-        // Assuming HelmetCore is Clone:
-        ok(HelmetMiddleware {
-            inner: self.0.clone(), // Clone the configuration from the factory
-            service,               // Pass the next service in the chain
+        ok(HelmetService {
+            headers: self.headers.clone(),
+            service,
         })
-
-        // If HelmetCore is large and not Clone, you might wrap it in Rc in the Helmet struct:
-        // pub struct Helmet(Rc<HelmetCore>);
-        // And then clone the Rc here:
-        // ok(HelmetMiddleware {
-        //     inner: self.0.clone(),
-        //     service,
-        // })
     }
 }
 
 type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
-impl<S, B> Service<ServiceRequest> for HelmetMiddleware<S>
+impl<S, B> Service<ServiceRequest> for HelmetService<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -167,28 +186,17 @@ where
     type Error = Error;
     type Future = LocalBoxFuture<Result<Self::Response, Self::Error>>;
 
-    // This service is ready when its next service is ready
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let fut = self.service.call(req);
-
-        let headers_vec = self
-            .inner
-            .headers
-            .iter()
-            .map(|header| (header.0, header.1.clone()))
-            .collect::<Vec<_>>();
+        let headers = self.headers.clone();
 
         Box::pin(async move {
             let mut res = fut.await?;
 
-            // Set the headers
-            for (name, value) in &headers_vec {
-                res.headers_mut().insert(
-                    HeaderName::from_bytes(name.as_bytes()).unwrap(),
-                    HeaderValue::from_str(value).unwrap(),
-                );
+            for (name, value) in &headers {
+                res.headers_mut().insert(name.clone(), value.clone());
             }
             Ok(res)
         })
@@ -198,35 +206,28 @@ where
 #[cfg(test)]
 mod tests {
     use actix_web::http::header::{HeaderName, HeaderValue};
-    // Make sure HttpResponse is imported if not already
-    use actix_web::{http, test, web, App, HttpResponse}; // Added test, http, HttpResponse
+    use actix_web::{http, test, web, App, HttpResponse};
 
-    use super::*; // Keep this
+    use super::*;
 
     #[actix_web::test]
     async fn test_helmet() {
-        // 1. Create the middleware *factory* instance
-        let helmet_factory =
-            Helmet::new().add(ContentSecurityPolicy::new().child_src(vec!["'self'"]));
-
-        // 2. Initialize the service using the factory with .wrap()
         let app = test::init_service(
-            // Use test::init_service
             App::new()
-                .wrap(helmet_factory) // Use the factory here
-                // Define a simple async route correctly
+                .wrap(
+                    Helmet::new()
+                        .add(ContentSecurityPolicy::new().child_src(vec!["'self'"]))
+                        .into_middleware()
+                        .unwrap(),
+                )
                 .route("/", web::get().to(|| async { HttpResponse::Ok().finish() })),
         )
         .await;
 
-        // 3. Create a request
-        let req = test::TestRequest::get().uri("/").to_request(); // Use test::TestRequest
+        let req = test::TestRequest::get().uri("/").to_request();
+        let res = test::call_service(&app, req).await;
 
-        // 4. Call the service
-        let res = test::call_service(&app, req).await; // Use test::call_service and the app
-
-        // 5. Assertions
-        assert!(res.status().is_success()); // Check status code idiomatically
+        assert!(res.status().is_success());
         assert_eq!(
             res.headers()
                 .get(HeaderName::from_static("content-security-policy")),
@@ -234,12 +235,13 @@ mod tests {
         );
     }
 
-    // Optional: Add a test for the default configuration
     #[actix_web::test]
     async fn test_helmet_default() {
+        let helmet: HelmetMiddleware = Helmet::default().try_into().unwrap();
+
         let app = test::init_service(
             App::new()
-                .wrap(Helmet::default()) // Use the default factory
+                .wrap(helmet)
                 .route("/", web::get().to(|| async { HttpResponse::Ok().finish() })),
         )
         .await;
@@ -248,9 +250,8 @@ mod tests {
         let resp = test::call_service(&app, req).await;
 
         assert!(resp.status().is_success());
-        // Check one or two default headers to confirm it works
         assert_eq!(
-            resp.headers().get(http::header::X_FRAME_OPTIONS), // Use constants from http::header
+            resp.headers().get(http::header::X_FRAME_OPTIONS),
             Some(&HeaderValue::from_static("SAMEORIGIN"))
         );
         assert_eq!(

@@ -1,6 +1,6 @@
 [package]
 name = "tide-helmet"
-version = "0.3.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
 description = "HTTP security headers middleware for Tide web framework"
@@ -16,7 +16,7 @@ categories = [
 ]
 
 [dependencies]
-helmet-core = { path = "../helmet-core", version = "0.3.0" }
+helmet-core = { path = "../helmet-core", version = "1.0.0" }
 tide = "0.16"
 async-trait = "0.1"
 

@@ -1,6 +1,6 @@
 [package]
 name = "axum-helmet"
-version = "0.3.1"
+version = "1.0.0"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
 description = "HTTP security headers middleware core for axum web framework"
@@ -19,7 +19,7 @@ categories = [
 
 [dependencies]
 axum = "0.8"
-helmet-core = { path = "../helmet-core", version = "0.3.0" }
+helmet-core = { path = "../helmet-core", version = "1.0.0" }
 tower = "0.5"
 tower-service = "0.3"
 http = "1.4"
