@@ -26,7 +26,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-axum-helmet = "0.1"
+axum-helmet = "1.0.1"
 ```
 
 ## Example

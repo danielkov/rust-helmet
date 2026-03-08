@@ -28,7 +28,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-actix-web-helmet = "0.1"
+actix-web-helmet = "1.0.0"
 ```
 
 ## Example

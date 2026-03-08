@@ -1,6 +1,6 @@
 [package]
 name = "axum-helmet"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
 description = "HTTP security headers middleware core for axum web framework"
@@ -18,14 +18,13 @@ categories = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.8"
 helmet-core = { path = "../helmet-core", version = "1.0.0" }
 tower = "0.5"
 tower-service = "0.3"
 http = "1.4"
 pin-project-lite = "0.2"
-tokio = "1.50"
 
 [dev-dependencies]
+axum = "0.8"
 axum-test = "19"
-tokio = { version = "1.50", features = ["rt-multi-thread"] }
+tokio = { version = "1.50", features = ["macros", "rt-multi-thread"] }
