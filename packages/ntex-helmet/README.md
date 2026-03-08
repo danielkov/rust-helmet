@@ -28,7 +28,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ntex-helmet = "0.1"
+ntex-helmet = "1.0.0"
 ```
 
 ## Example

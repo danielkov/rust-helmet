@@ -32,7 +32,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-helmet-core = "0.1"
+helmet-core = "1.0.0"
 ```
 
 Implementing the middleware is different for each framework. See the README for your framework of choice to see how to use it.
