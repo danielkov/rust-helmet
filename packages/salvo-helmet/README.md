@@ -26,14 +26,14 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-salvo-helmet = "0.3"
+salvo-helmet = "1.0"
 ```
 
 ## Example
 
 ```rust
 use salvo::prelude::*;
-use salvo_helmet::Helmet;
+use salvo_helmet::{Helmet, HelmetHandler};
 
 #[handler]
 async fn index() -> &'static str {
@@ -42,8 +42,9 @@ async fn index() -> &'static str {
 
 #[tokio::main]
 async fn main() {
-    let router = Router::with_hoop(Helmet::default())
-        .get(index);
+    let helmet: HelmetHandler = Helmet::default().try_into().unwrap();
+
+    let router = Router::with_hoop(helmet).get(index);
 
     let acceptor = TcpListener::new("0.0.0.0:3000").bind().await;
     Server::new(acceptor).serve(router).await;

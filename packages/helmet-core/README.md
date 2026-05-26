@@ -4,10 +4,13 @@
 [![docs](https://docs.rs/helmet-core/badge.svg)](https://docs.rs/helmet-core)
 
 - `ntex-helmet` is a security middleware for the `ntex` web framework.
-- `actix-web-helmet` is a security middleware for the `actix-web` web framework. **_Coming Soon_**
-- `rocket-helmet` is a security middleware for the `rocket` web framework. **_Coming Soon_**
-- `warp-helmet` is a security middleware for the `warp` web framework. **_Coming Soon_**
+- `actix-web-helmet` is a security middleware for the `actix-web` web framework.
+- `rocket-helmet` is a security middleware for the `rocket` web framework.
+- `warp-helmet` is a security middleware for the `warp` web framework.
 - `axum-helmet` is a security middleware for the `axum` web framework.
+- `poem-helmet` is a security middleware for the `poem` web framework.
+- `salvo-helmet` is a security middleware for the `salvo` web framework.
+- `tide-helmet` is a security middleware for the `tide` web framework.
 
 It works by setting HTTP headers for you. These headers can help protect your app from some well-known web vulnerabilities:
 
@@ -32,27 +35,29 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-helmet-core = "1.0.0"
+helmet-core = "1.0.1"
 ```
 
 Implementing the middleware is different for each framework. See the README for your framework of choice to see how to use it.
 
 ## Example
 
-```rust
+If your framework already has a `*-helmet` crate, prefer that. Otherwise, you
+can wrap `helmet_core::Helmet` yourself — the `headers` field is a
+`Vec<(&'static str, String)>` that you copy onto each response.
+
+```rust,ignore
 use helmet_core::Helmet;
 
 let helmet = Helmet::default();
 
-struct MyCustomFrameworkMiddleware(Helmet);
+struct MyFrameworkMiddleware(Helmet);
 
-// Imagine this is a middleware for your favorite framework
-impl<S, B> Middleware<S, B> for MyCustomFrameworkMiddleware {
-    fn start(&self, req: &mut Request<S>) -> Result<Started> {
-        self.0.headers.iter().for_each(|(k, v)| {
-            req.headers_mut().insert(k, v.clone());
-        });
-        Ok(Started::Done)
+impl<S, B> Middleware<S, B> for MyFrameworkMiddleware {
+    fn on_response(&self, res: &mut Response<B>) {
+        for (name, value) in &self.0.headers {
+            res.headers_mut().insert(*name, value.clone());
+        }
     }
 }
 ```

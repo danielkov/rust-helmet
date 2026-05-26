@@ -26,20 +26,26 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-axum-helmet = "1.0.1"
+axum-helmet = "1.0.2"
 ```
 
 ## Example
 
 ```rust
-use axum::{self, Router};
-use axum_helmet::Helmet;
+use axum::{routing::get, Router};
+use axum_helmet::{Helmet, HelmetLayer};
 
-let app = Router::new()
-    .route("/", axum::handler::get(|| async { "Hello, World!" }))
-    .layer(Helmet::default());
+#[tokio::main]
+async fn main() {
+    let layer: HelmetLayer = Helmet::default().try_into().unwrap();
 
-// ...
+    let app = Router::new()
+        .route("/", get(|| async { "Hello, World!" }))
+        .layer(layer);
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
 ```
 
 ## License

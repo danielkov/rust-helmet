@@ -26,7 +26,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-poem-helmet = "0.3"
+poem-helmet = "1.0"
 ```
 
 ## Example
@@ -44,7 +44,7 @@ fn index() -> &'static str {
 async fn main() -> Result<(), std::io::Error> {
     let app = Route::new()
         .at("/", get(index))
-        .with(Helmet::default());
+        .with(Helmet::default().into_middleware().unwrap());
 
     Server::new(TcpListener::bind("0.0.0.0:3000"))
         .run(app)

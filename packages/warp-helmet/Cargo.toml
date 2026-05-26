@@ -1,6 +1,6 @@
 [package]
 name = "warp-helmet"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["Daniel Kovacs <kovacsemod@gmail.com>"]
 description = "HTTP security headers middleware for Warp web framework"
