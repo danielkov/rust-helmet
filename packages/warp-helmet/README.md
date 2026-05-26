@@ -26,18 +26,18 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-warp-helmet = "0.3"
+warp-helmet = "1.0"
 ```
 
 ## Example
 
 ```rust
 use warp::Filter;
-use warp_helmet::Helmet;
+use warp_helmet::{Helmet, HelmetFilter};
 
 #[tokio::main]
 async fn main() {
-    let helmet = Helmet::default();
+    let helmet: HelmetFilter = Helmet::default().try_into().unwrap();
 
     let route = helmet.wrap(
         warp::path::end().map(|| "Hello, world!")

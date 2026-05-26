@@ -28,22 +28,25 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-actix-web-helmet = "1.0.0"
+actix-web-helmet = "1.0.1"
 ```
 
 ## Example
 
 ```rust
-use actix_web::{web, App, HttpResponse};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use actix_web_helmet::Helmet;
 
 #[actix_web::main]
-async fn main() {
-    let app = App::new()
-        .wrap(Helmet::default())
-        .service(web::resource("/").to(|| HttpResponse::Ok()));
-
-    // ...
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .wrap(Helmet::default().into_middleware().unwrap())
+            .service(web::resource("/").to(HttpResponse::Ok))
+    })
+    .bind("0.0.0.0:3000")?
+    .run()
+    .await
 }
 ```
 

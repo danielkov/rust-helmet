@@ -28,22 +28,26 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ntex-helmet = "1.0.0"
+ntex-helmet = "1.0.1"
 ```
 
 ## Example
 
 ```rust
-use ntex::web::{self, App, HttpResponse};
+use ntex::web::{self, App, HttpResponse, HttpServer};
 use ntex_helmet::Helmet;
 
 #[ntex::main]
-fn main() {
-    let app = App::new()
-        .wrap(Helmet::default())
-        .service(web::resource("/").to(|| HttpResponse::Ok()));
-
-    // ...
+async fn main() -> std::io::Result<()> {
+    let helmet = Helmet::default().into_middleware().unwrap();
+    HttpServer::new(move || {
+        App::new()
+            .middleware(helmet.clone())
+            .service(web::resource("/").to(|| async { HttpResponse::Ok() }))
+    })
+    .bind("0.0.0.0:3000")?
+    .run()
+    .await
 }
 ```
 
