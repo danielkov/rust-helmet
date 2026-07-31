@@ -82,13 +82,12 @@
 //!     .await
 //! }
 //! ```
-use std::future::Future;
-use std::pin::Pin;
+use core::future::{Future, Ready, ready};
+use core::pin::Pin;
 
 use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::header::{HeaderName, HeaderValue};
 use actix_web::Error;
-use futures::future::{ok, Ready};
 
 use helmet_core::Helmet as HelmetCore;
 
@@ -167,10 +166,10 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ok(HelmetService {
+        ready(Ok(HelmetService {
             headers: self.headers.clone(),
             service,
-        })
+        }))
     }
 }
 
