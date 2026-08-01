@@ -18,9 +18,8 @@ categories = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = { version = "4.13" }
+actix-web = { version = "4.13", default-features = false }
 helmet-core = { path = "../helmet-core", version = "1.0.0" }
-futures = { version = "0.3" }
 
 [dev-dependencies]
-actix-web = { version = "4.13" }
+actix-web = { version = "4.13", default-features = false, features = ["macros"] }
