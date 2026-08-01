@@ -82,7 +82,7 @@
 //!     .await
 //! }
 //! ```
-use core::future::{Future, Ready, ready};
+use core::future::{ready, Future, Ready};
 use core::pin::Pin;
 
 use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform};
